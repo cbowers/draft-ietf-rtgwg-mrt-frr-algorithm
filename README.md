@@ -6,5 +6,7 @@ Changes to the document can be proposed using the github GUI by clicking on the 
 You can also do some or all of this using the git CLI.
 
 You can generate the text version of the most recent XML commit by pasting the raw github content URL into the xml2rfc tool at:
+
 http://xml2rfc.tools.ietf.org/
+
 https://raw.githubusercontent.com/cbowers/draft-ietf-rtgwg-mrt-frr-algorithm/master/draft-ietf-rtgwg-mrt-frr-algorithm.xml 
