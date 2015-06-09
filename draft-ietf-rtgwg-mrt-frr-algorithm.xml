@@ -625,9 +625,9 @@ title="Basic Depth-First Search algorithm">
         if D(w) is not set
           DFS_Visit(w, x)
 
-   Run_DFS(node root)
+   Run_DFS(node gadag_root)
       dfs_number = 0
-      DFS_Visit(root, NONE)
+      DFS_Visit(gadag_root, NONE)
 </artwork>
 </figure>
 
@@ -692,9 +692,9 @@ title="Computing Low-Point value">
              x.lowpoint_parent = intf.remote_node
              x.lowpoint_parent_intf = intf
 
-   Run_Lowpoint(node root)
+   Run_Lowpoint(node gadag_root)
       dfs_number = 0
-      Lowpoint_Visit(root, NONE, NONE)
+      Lowpoint_Visit(gadag_root, NONE, NONE)
 ]]></artwork>
 </figure>
 
@@ -873,7 +873,7 @@ title="A method for computing local-roots">
                 mark x as cut-vertex
                 Compute_Localroot(c, x)
   
-    Compute_Localroot(root, root)
+    Compute_Localroot(gadag_root, gadag_root)
 ]]></artwork>
 </figure>
 
@@ -936,7 +936,7 @@ Assign_Block_ID(x, cur_block_id)
        Assign_Block_ID(c, cur_block_id)
 
 max_block_id = 0
-Assign_Block_ID(root, max_block_id)
+Assign_Block_ID(gadag_root, max_block_id)
 ]]></artwork>
 </figure>
 
@@ -1282,11 +1282,11 @@ Construct_Ear(x, Stack, intf, ear_type)
       y.localroot = localroot
       push(Stack, y)
 
-Construct_GADAG_via_Lowpoint(topology, root)
-  root.IN_GADAG = true
-  root.localroot = None
+Construct_GADAG_via_Lowpoint(topology, gadag_root)
+  gadag_root.IN_GADAG = true
+  gadag_root.localroot = None
   Initialize Stack to empty
-  push root onto Stack
+  push gadag_root onto Stack
   while (Stack is not empty)
      x = pop(Stack)
      foreach interface intf of x
@@ -1298,7 +1298,7 @@ Construct_GADAG_via_Lowpoint(topology, root)
             (intf.remote_node.dfs_parent is not x))
             Construct_Ear(x, Stack, intf, NEIGHBOR)
 
-Construct_GADAG_via_Lowpoint(topology, root)
+Construct_GADAG_via_Lowpoint(topology, gadag_root)
 ]]></artwork>
 </figure>
 
@@ -1343,9 +1343,9 @@ that root.  The exact details of this whole process are captured in
 title="Assigning direction to UNDIRECTED links">
 <artwork align="center"><![CDATA[
 
-Set_Block_Root_Incoming_Links(topo, root, mark_or_clear)
+Set_Block_Root_Incoming_Links(topo, gadag_root, mark_or_clear)
    foreach node x in topo
-      if node x is a cut-vertex or root
+      if node x is a cut-vertex or gadag_root
          foreach interface i of x
             if (i.remote_node.localroot is x)
                if i.UNDIRECTED
@@ -1371,14 +1371,14 @@ Set_Block_Root_Incoming_Links(topo, root, mark_or_clear)
                   i.remote_intf.OUTGOING = true
                   i.remote_intf.STORE_OUTGOING = false
 
-Run_Topological_Sort_GADAG(topo, root)
-   Set_Block_Root_Incoming_Links(topo, root, MARK)
+Run_Topological_Sort_GADAG(topo, gadag_root)
+   Set_Block_Root_Incoming_Links(topo, gadag_root, MARK)
    foreach node x
       set x.unvisited to the count of x's incoming interfaces 
           that aren't marked TEMP_UNUSABLE
    Initialize working_list to empty
    Initialize topo_order_list to empty
-   add_to_list_end(working_list, root)
+   add_to_list_end(working_list, gadag_root)
    while working_list is not empty
       y = remove_start_item_from_list(working_list)
       add_to_list_end(topo_order_list, y)
@@ -1392,10 +1392,10 @@ Run_Topological_Sort_GADAG(topo, root)
       y = remove_start_item_from_list(topo_order_list)
       y.topo_order = next_topo_order
       next_topo_order += 1
-   Set_Block_Root_Incoming_Links(topo, root, CLEAR)
+   Set_Block_Root_Incoming_Links(topo, gadag_root, CLEAR)
      
-Add_Undirected_Links(topo, root)
-    Run_Topological_Sort_GADAG(topo, root)
+Add_Undirected_Links(topo, gadag_root)
+    Run_Topological_Sort_GADAG(topo, gadag_root)
     foreach node x in topo
       foreach interface i of x
          if i.UNDIRECTED
@@ -1410,7 +1410,7 @@ Add_Undirected_Links(topo, root)
               i.remote_intf.OUTGOING = true
               i.remote_intf.UNDIRECTED = false
 
-Add_Undirected_Links(topo, root)
+Add_Undirected_Links(topo, gadag_root)
 ]]></artwork>
 </figure>
 
@@ -1701,7 +1701,7 @@ particular primary next-hop.</t>
 <figure anchor="fig_mrt_next_hops_alg" align="center">
 <artwork align="center"><![CDATA[
 In_Common_Block(x, y)
-  if ( (x.block_id is y.block_id))
+  if ( (x.block_id is y.block_id)
        or (x is y.localroot) or (y is x.localroot) )
      return true
   return false
@@ -1714,7 +1714,7 @@ Store_Results(y, direction)
       y.lower = true
       y.red_next_hops = y.next_hops
 
-SPF_No_Traverse_Root(spf_root, block_root, direction)
+SPF_No_Traverse_Block_Root(spf_root, block_root, direction)
    Initialize spf_heap to empty
    Initialize nodes' spf_metric to infinity and next_hops to empty
    spf_root.spf_metric = 0
@@ -1750,13 +1750,13 @@ SetEdge(y)
      y.red_next_hops = y.localroot.red_next_hops
      y.order_proxy = y.localroot.order_proxy
 
-Compute_MRT_NextHops(x, root)
+Compute_MRT_NextHops(x, gadag_root)
    foreach node y
      y.higher = y.lower = false
      clear y.red_next_hops and y.blue_next_hops
      y.order_proxy = y
-   SPF_No_Traverse_Root(x, x.localroot, FORWARD)
-   SPF_No_Traverse_Root(x, x.localroot, REVERSE)
+   SPF_No_Traverse_Block_Root(x, x.localroot, FORWARD)
+   SPF_No_Traverse_Block_Root(x, x.localroot, REVERSE)
 
    // red and blue next-hops are stored to x.localroot as different
    // paths are found via the SPF and reverse-SPF.
@@ -1776,17 +1776,17 @@ Compute_MRT_NextHops(x, root)
            y.red_next_hops = x.localroot.blue_next_hops
 
    // Inherit next-hops and order_proxies to other components
-   if x is not root
-      root.blue_next_hops = x.localroot.blue_next_hops
-      root.red_next_hops = x.localroot.red_next_hops
-      root.order_proxy = x.localroot
+   if x is not gadag_root
+      gadag_root.blue_next_hops = x.localroot.blue_next_hops
+      gadag_root.red_next_hops = x.localroot.red_next_hops
+      gadag_root.order_proxy = x.localroot
    foreach node y
-      if (y is not root) and (y is not x) and y.IN_MRT_ISLAND
+      if (y is not gadag_root) and (y is not x) and y.IN_MRT_ISLAND
         SetEdge(y)
 
 max_block_id = 0
-Assign_Block_ID(root, max_block_id)
-Compute_MRT_NextHops(x, root)
+Assign_Block_ID(gadag_root, max_block_id)
+Compute_MRT_NextHops(x, gadag_root)
 ]]></artwork>
 </figure>
 
