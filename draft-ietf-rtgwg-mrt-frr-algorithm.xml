@@ -679,7 +679,7 @@ title="Computing Low-Point value">
       x.dfs_parent = parent
       x.dfs_parent_intf = p_to_x.remote_intf
       x.lowpoint_parent = NONE
-      for each interface intf of x
+      for each ordered_interface intf of x
         if D(intf.remote_node) is not set
           Lowpoint_Visit(intf.remote_node, x, intf)
           if L(intf.remote_node) < L(x)
@@ -974,12 +974,19 @@ router x should select. [See <xref target="sec_mrt_alternates"/>.]</t>
 <section anchor="sec_interface_ordering" title="Interface Ordering" >
 <t>To ensure consistency in computation, all routers MUST order
 interfaces identically down to the set of links with the same metric
-to the same neighboring node.  This is necessary for the DFS, where
-the selection order of the interfaces to explore results in different
-trees, and for computing the GADAG, where the selection order of the
-interfaces to use to form ears can result in different GADAGs.  The
-required ordering between two interfaces from the same router x is
-given in <xref target="interface_ordering"/>.</t>
+to the same neighboring node.  This is necessary for the DFS in
+Lowpoint_Visit above, where the selection order of the interfaces to
+explore results in different trees.  Consistent interface ordering is
+also necessary for computing the GADAG, where the selection order of
+the interfaces to use to form ears can result in different GADAGs.  It
+is also necessary for the topological sort described in <xref
+target="sec_mrt_alternates"/>, where different topological sort
+orderings can result in undirected links being added to the GADAG in
+different directions.
+</t>
+
+<t> The required ordering between two interfaces from
+the same router x is given in <xref target="interface_ordering"/>.</t>
 
 <figure anchor="interface_ordering" align="center"
 title="Rules for ranking multiple interfaces.
@@ -1289,11 +1296,11 @@ Construct_GADAG_via_Lowpoint(topology, gadag_root)
   push gadag_root onto Stack
   while (Stack is not empty)
      x = pop(Stack)
-     foreach interface intf of x
+     foreach ordered_interface intf of x
         if ((intf.remote_node.IN_GADAG == false) and 
             (intf.remote_node.dfs_parent is x))
             Construct_Ear(x, Stack, intf, CHILD)
-     foreach interface intf of x
+     foreach ordered_interface intf of x
         if ((intf.remote_node.IN_GADAG == false) and 
             (intf.remote_node.dfs_parent is not x))
             Construct_Ear(x, Stack, intf, NEIGHBOR)
@@ -1382,7 +1389,7 @@ Run_Topological_Sort_GADAG(topo, gadag_root)
    while working_list is not empty
       y = remove_start_item_from_list(working_list)
       add_to_list_end(topo_order_list, y)
-      foreach interface i of y
+      foreach ordered_interface i of y
           if (i.OUTGOING) and (not i.TEMP_UNUSABLE)
              i.remote_node.unvisited -= 1
              if i.remote_node.unvisited is 0
