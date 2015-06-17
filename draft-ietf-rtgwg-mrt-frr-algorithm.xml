@@ -1280,6 +1280,7 @@ Construct_Ear(x, Stack, intf, ear_type)
    if (ear_type is CHILD) and (cur_node is x) 
       // x is a cut-vertex and the local root for
       // the block in which the ear is computed
+      x.IS_CUT_VERTEX = true
       localroot = x
    else
       // Inherit local-root from the end of the ear
