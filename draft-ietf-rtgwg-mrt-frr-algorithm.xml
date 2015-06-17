@@ -1341,84 +1341,147 @@ GADAGs.</t>
 <t>To convert a GADAG to a DAG, it is necessary to remove all links
 that point to a root of block from within that block.  That provides
 the necessary conversion to a DAG and then a topological sort can be
-done.  Finally, all UNDIRECTED links are assigned a direction based
-upon the total ordering.  Any UNDIRECTED links that connect to a root
-of a block from within that block are assigned a direction INCOMING to
-that root.  The exact details of this whole process are captured in
-<xref target="topo_sort_links"/></t>
+done.  When adding undirected links to the GADAG, links connecting the
+block root to other nodes in that block need special handling because
+the topological order will not always give the right answer for those
+links. There are three cases to consider.  If the undirected link in
+question has another parallel link between the same two nodes that is
+already directed, then the direction of the undirected link can be
+inherited from the previously directed link. In the case of parallel
+cut links, we set all of the parallel links to both INCOMING and
+OUTGOING.  Otherwise, the undirected link in question is set to
+OUTGOING from the block root node. A cut-link can then be identified
+by the fact that it will be directed both INCOMING and OUTGOING in the
+GADAG.  The exact details of this whole process are captured in <xref
+target="topo_sort_links"/></t>
 
 <figure anchor="topo_sort_links" align="center"
 title="Assigning direction to UNDIRECTED links">
 <artwork align="center"><![CDATA[
-
-Set_Block_Root_Incoming_Links(topo, gadag_root, mark_or_clear)
-   foreach node x in topo
-      if node x is a cut-vertex or gadag_root
-         foreach interface i of x
-            if (i.remote_node.localroot is x)
-               if i.UNDIRECTED
-                  i.OUTGOING = true
-                  i.remote_intf.INCOMING = true
-                  i.UNDIRECTED = false
-                  i.remote_intf.UNDIRECTED = false
-               if i.INCOMING
-                  if mark_or_clear is MARK
-                     if i.OUTGOING  // a cut-link 
-                        i.STORE_INCOMING = true
-                        i.INCOMING = false
-                        i.remote_intf.STORE_OUTGOING = true
-                        i.remote_intf.OUTGOING = false
-                     i.TEMP_UNUSABLE = true
-                     i.remote_intf.TEMP_UNUSABLE = true
-                  else
-                     i.TEMP_UNUSABLE = false
-                     i.remote_intf.TEMP_UNUSABLE = false
-               if i.STORE_INCOMING and (mark_or_clear is CLEAR)
-                  i.INCOMING = true
-                  i.STORE_INCOMING = false
-                  i.remote_intf.OUTGOING = true
-                  i.remote_intf.STORE_OUTGOING = false
-
-Run_Topological_Sort_GADAG(topo, gadag_root)
-   Set_Block_Root_Incoming_Links(topo, gadag_root, MARK)
-   foreach node x
-      set x.unvisited to the count of x's incoming interfaces 
-          that aren't marked TEMP_UNUSABLE
-   Initialize working_list to empty
-   Initialize topo_order_list to empty
-   add_to_list_end(working_list, gadag_root)
-   while working_list is not empty
-      y = remove_start_item_from_list(working_list)
-      add_to_list_end(topo_order_list, y)
-      foreach ordered_interface i of y
-          if (i.OUTGOING) and (not i.TEMP_UNUSABLE)
-             i.remote_node.unvisited -= 1
-             if i.remote_node.unvisited is 0
-                 add_to_list_end(working_list, i.remote_node)
-   next_topo_order = 1
-   while topo_order_list is not empty
-      y = remove_start_item_from_list(topo_order_list)
-      y.topo_order = next_topo_order
-      next_topo_order += 1
-   Set_Block_Root_Incoming_Links(topo, gadag_root, CLEAR)
-     
-Add_Undirected_Links(topo, gadag_root)
-    Run_Topological_Sort_GADAG(topo, gadag_root)
+Add_Undirected_Block_Root_Links(topo, gadag_root):
     foreach node x in topo
-      foreach interface i of x
-         if i.UNDIRECTED
-           if x.topo_order < i.remote_node.topo_order
-              i.OUTGOING = true
-              i.UNDIRECTED = false
-              i.remote_intf.INCOMING = true
-              i.remote_intf.UNDIRECTED = false
-           else
-              i.INCOMING = true
-              i.UNDIRECTED = false
-              i.remote_intf.OUTGOING = true
-              i.remote_intf.UNDIRECTED = false
+        if x.IS_CUT_VERTEX or x is gadag_root
+            foreach interface i of x
+                if (i.remote_node.localroot is not x
+                                    or i.PROCESSED )
+                    continue
+                Initialize bundle_list to empty
+                bundle.UNDIRECTED = true
+                bundle.OUTGOING = false
+                bundle.INCOMING = false
+                foreach interface i2 in x
+                    if i2.remote_node is i.remote_node
+                        add_to_list_end(bundle_list, i2)
+                        if not i2.UNDIRECTED:
+                            bundle.UNDIRECTED = false
+                            if i2.INCOMING:
+                                bundle.INCOMING = true
+                            if i2.OUTGOING:
+                                bundle.OUTGOING = true
+                if bundle.UNDIRECTED
+                    foreach interface i3 in bundle_list
+                        i3.UNDIRECTED = false
+                        i3.remote_intf.UNDIRECTED = false
+                        i3.PROCESSED = true
+                        i3.remote_intf.PROCESSED = true
+                        i3.OUTGOING = true
+                        i3.remote_intf.INCOMING = true
+                else
+                    if (bundle.OUTGOING and bundle.INCOMING)
+                        foreach interface i3 in bundle_list
+                            i3.UNDIRECTED = false
+                            i3.remote_intf.UNDIRECTED = false
+                            i3.PROCESSED = true
+                            i3.remote_intf.PROCESSED = true
+                            i3.OUTGOING = true
+                            i3.INCOMING = true
+                            i3.remote_intf.INCOMING = true
+                            i3.remote_intf.OUTGOING = true
+                    else if bundle.OUTGOING
+                        foreach interface i3 in bundle_list
+                            i3.UNDIRECTED = false
+                            i3.remote_intf.UNDIRECTED = false
+                            i3.PROCESSED = true
+                            i3.remote_intf.PROCESSED = true
+                            i3.OUTGOING = true
+                            i3.remote_intf.INCOMING = true
+                    else if bundle.INCOMING
+                        foreach interface i3 in bundle_list
+                            i3.UNDIRECTED = false
+                            i3.remote_intf.UNDIRECTED = false
+                            i3.PROCESSED = true
+                            i3.remote_intf.PROCESSED = true
+                            i3.INCOMING = true
+                            i3.remote_intf.OUTGOING = true
+                     
+Modify_Block_Root_Incoming_Links(topo, gadag_root):
+    foreach node x in topo
+        if x.IS_CUT_VERTEX or x is gadag_root
+            foreach interface i of x
+                if i.remote_node.localroot is x
+                    if i.INCOMING:
+                        i.INCOMING = false
+                        i.INCOMING_STORED = true
+                        i.remote_intf.OUTGOING = false
+                        i.remote_intf.OUTGOING_STORED = true
 
+Revert_Block_Root_Incoming_Links(topo, gadag_root):
+    foreach node x in topo
+        if x.IS_CUT_VERTEX or x is gadag_root
+            foreach interface i of x
+                if i.remote_node.localroot is x
+                    if i.INCOMING_STORED:
+                        i.INCOMING = true
+                        i.remote_intf.OUTGOING = true
+                        i.INCOMING_STORED = false
+                        i.remote_intf.OUTGOING_STORED = false
+
+Run_Topological_Sort_GADAG(topo, gadag_root):
+    Modify_Block_Root_Incoming_Links(topo, gadag_root)
+    foreach node x in topo:
+        node.unvisited = 0
+        foreach interface i of x:
+            if (i.INCOMING):
+                node.unvisited += 1
+    Initialize working_list to empty
+    Initialize topo_order_list to empty
+    add_to_list_end(working_list, gadag_root)
+    while working_list is not empty
+        y = remove_start_item_from_list(working_list)
+        add_to_list_end(topo_order_list, y)
+        foreach ordered_interface i of y
+            if intf.OUTGOING
+                i.remote_node.unvisited -= 1
+                if i.remote_node.unvisited is 0
+                    add_to_list_end(working_list, i.remote_node)
+    next_topo_order = 1
+    while topo_order_list is not empty               
+        y = remove_start_item_from_list(topo_order_list)
+        y.topo_order = next_topo_order
+        next_topo_order += 1
+    Revert_Block_Root_Incoming_Links(topo, gadag_root)
+
+def Set_Other_Undirected_Links_Based_On_Topo_Order(topo):
+    foreach node x in topo
+        foreach interface i of x
+            if i.UNDIRECTED:
+                if x.topo_order < i.remote_node.topo_order
+                    i.OUTGOING = true
+                    i.UNDIRECTED = false
+                    i.remote_intf.INCOMING = true
+                    i.remote_intf.UNDIRECTED = false
+                else
+                    i.INCOMING = true
+                    i.UNDIRECTED = false
+                    i.remote_intf.OUTGOING = true
+                    i.remote_intf.UNDIRECTED = false 
+          
 Add_Undirected_Links(topo, gadag_root)
+    Add_Undirected_Block_Root_Links(topo, gadag_root)
+    Run_Topological_Sort_GADAG(topo, gadag_root)
+    Set_Other_Undirected_Links_Based_On_Topo_Order(topo)
+	
+Add_Undirected_Links(topo, gadag_root)	
 ]]></artwork>
 </figure>
 
