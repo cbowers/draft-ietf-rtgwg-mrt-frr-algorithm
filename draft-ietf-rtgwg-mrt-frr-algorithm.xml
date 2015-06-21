@@ -603,7 +603,7 @@ point.</t>
 
 </section>
 
-<section title="Low-Point Values and Their Uses" >
+<section anchor="sec_lowpoint_values" title="Low-Point Values and Their Uses" >
 
 <t>A basic way of computing a spanning tree on a network graph is to
 run a depth-first-search, such as given in <xref
@@ -975,7 +975,8 @@ router x should select. [See <xref target="sec_mrt_alternates"/>.]</t>
 <t>To ensure consistency in computation, all routers MUST order
 interfaces identically down to the set of links with the same metric
 to the same neighboring node.  This is necessary for the DFS in
-Lowpoint_Visit above, where the selection order of the interfaces to
+Lowpoint_Visit in <xref target="sec_lowpoint_values"/>, 
+where the selection order of the interfaces to
 explore results in different trees.  Consistent interface ordering is
 also necessary for computing the GADAG, where the selection order of
 the interfaces to use to form ears can result in different GADAGs.  It
