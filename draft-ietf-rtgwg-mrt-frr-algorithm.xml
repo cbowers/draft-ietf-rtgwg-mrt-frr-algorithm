@@ -1882,149 +1882,228 @@ topological ordering.</t>
 
 <t>For each primary next-hop node F to each destination D, S can call
 Select_Alternates(S, D, F, primary_intf) to determine whether to use
-the MRT-Blue next-hops as the alternate next-hop(s) for that primary
-next hop or to use the MRT-Red next-hops.  The algorithm is given in
+the MRT-Blue or MRT-Red next-hops as the alternate next-hop(s) 
+for that primary next hop.  The algorithm is given in
 <xref target="fig_alternate_selection_nh"/> and discussed
 afterwards.</t>
 
 <figure anchor="fig_alternate_selection_nh" align="center">
 <artwork align="center"><![CDATA[
-
-Select_Alternates_Internal(S, D, F, primary_intf,
-                           D_lower, D_higher, D_topo_order)
-
-    //When D==F, we can do only link protection
-    if ((D is F) or (D.order_proxy is F))
-        if an MRT doesn't use primary_intf
-            indicate alternate is not node-protecting
-            return that MRT color
-        else // parallel links are cut-links
-            return AVOID_LINK_ON_BLUE
-
-    if (D_lower and D_higher and F.lower and F.higher)
-        if F.topo_order < D_topo_order
+Select_Alternates_Internal(D, F, primary_intf,
+                               D_lower, D_higher, D_topo_order):
+    if D_higher and D_lower
+        if F.HIGHER and F.LOWER
+            if F.topo_order < D_topo_order
+                return USE_RED
+            else
+                return USE_BLUE
+        if F.HIGHER
             return USE_RED
-        else
+        if F.LOWER
+            return USE_BLUE  
+    if D_higher
+        if F.HIGHER and F.LOWER
             return USE_BLUE
-
-    if (D_lower and D_higher)
-        if F.higher
+        if F.LOWER
+            return USE_BLUE
+        if F.HIGHER
+            if (F.topo_order > D_topo_order)
+                return USE_BLUE
+            if (F.topo_order < D_topo_order)
+                return USE_RED
+    if D_lower
+        if F.HIGHER and F.LOWER
             return USE_RED
-        else
-            return USE_BLUE
-
-    if (F.lower and F.higher)
-        if D_lower
+        if F.HIGHER
             return USE_RED
-        else if D_higher
-            return USE_BLUE
-        else
+        if F.LOWER
+            if F.topo_order > D_topo_order
+                return USE_BLUE
+            if F.topo_order < D_topo_order
+                return USE_RED
+    else  //D is unordered wrt S
+        if F.HIGHER and F.LOWER
             if primary_intf.OUTGOING and primary_intf.INCOMING
-                return AVOID_LINK_ON_BLUE
+                // this case should not occur
             if primary_intf.OUTGOING
                 return USE_BLUE
             if primary_intf.INCOMING
                 return USE_RED
-
-    if D_higher
-        if F.higher
-            if F.topo_order < D_topo_order
-                return USE_RED
-            else
-                return USE_BLUE
-        else if F.lower
-            return USE_BLUE
-        else                
-            // F and S are neighbors so either F << S or F >> S
-    else if D_lower
-        if F.higher
+        if F.LOWER
             return USE_RED
-        else if F.lower
-            if F.topo_order < D_topo_order
-                return USE_RED
-            else
-                return USE_BLUE
-        else
-            // F and S are neighbors so either F << S or F >> S
-    else // D and S not ordered
-        if F.lower
-            return USE_RED
-        else if F.higher
+        if F.HIGHER
             return USE_BLUE
-        else
-            // F and S are neighbors so either F << S or F >> S
+			
+Select_Alternates(D, F, primary_intf)
+    if (D is F) or (D.order_proxy is F)
+        return PRIM_NH_IS_D_OR_OP_FOR_D
+	D_lower = D.order_proxy.LOWER
+	D_higher = D.order_proxy.HIGHER
+	D_topo_order = D.order_proxy.topo_order
+    return Select_Alternates_Internal(D, F, primary_intf,
+                                      D_lower, D_higher, D_topo_order)
+]]></artwork>
+</figure>
 
+<t>It is useful to first handle the case where
+   where F is also D, or F is the order proxy for D. In this case, only link
+   protection is possible.  The MRT that doesn't use the failed
+   primary next-hop is used.  If both MRTs use the primary next-hop,
+   then the primary next-hop must be a cut-link, so either MRT could be
+   used but the set of MRT next-hops must be pruned to avoid the failed 
+   primary next-hop interface.  To indicate this case, Select_Alternates returns
+   PRIM_NH_IS_D_OR_OP_FOR_D. Explicit pseudocode to handle the three sub-cases above 
+   is not provided.</t>
+   
+<t> The logic behind Select_Alternates_Internal is described in 
+ <xref target="S_D_F_case_table"/>. As an example, consider the first case
+described in the table, where the D&gt;&gt;S and D&lt;&lt;S.  If this is 
+true, then either S or D must be the block root, R.  If 
+F&gt;&gt;S and F&lt;&lt;S, then S is the block root.  So the blue path
+from S to D is the increasing path to D, and the red path S to D 
+is the decreasing path to D.  If the F.topo_order&lt;D.topo_order, then 
+either F is ordered higher than D or F is unordered with respect to D.
+Therefore, F is either on a decreasing path from S to D, or it is on neither
+an increasing nor a decreasing path from S to D.  In either case, it is 
+safe to take an increasing path from S to D to avoid F.  We know that
+when S is R, the increasing path is the blue path, so it is safe to 
+use the blue path to avoid F.</t>  
 
-Select_Alternates(S, D, F, primary_intf)
-   if D.order_proxy is not D
-      D_lower = D.order_proxy.lower
-      D_higher = D.order_proxy.higher
-      D_topo_order = D.order_proxy.topo_order
-   else
-      D_lower = D.lower
-      D_higher = D.higher
-      D_topo_order = D.topo_order
-   return Select_Alternates_Internal(S, D, F, primary_intf,
-                                    D_lower, D_higher, D_topo_order)
+<t>If instead F.topo_order&gt;D.topo_order, then either F is ordered 
+lower than D, or F is unordered with respect to D.  Therefore, F is 
+either on an increasing path from S to D, or it is on neither 
+an increasing nor a decreasing path from S to D. In either case, it is 
+safe to take a decreasing path from S to D to avoid F.  We know that
+when S is R, the decreasing path is the red path, so it is safe to 
+use the red path to avoid F.</t>    
+
+<t>If F&gt;&gt;S or F&lt;&lt;S (but not both), then D is the block root.
+We then know that the blue path from S to D is the increasing path to R,
+and the red path is the decreasing path to R.  When F&gt;&gt;S, we  deduce
+that F is on an increasing path from S to R.  So in order to avoid F, we
+use a decreasing path from S to R, which is the red path.  Instead,
+when F&lt;&lt;S, we deduce
+that F is on a decreasing path from S to R.  So in order to avoid F, we
+use an increasing path from S to R, which is the blue path.</t>
+
+<t>All possible cases are systematically described in the same
+manner in the rest of the table.</t>  
+
+<figure anchor = "S_D_F_case_table" align="center" title="determining 
+MRT next-hops and alternates based on the partial order and
+topological sort relationships between the
+source(S), destination(D), primary next-hop(F), and block root(R).
+topo(N) indicates the topological sort value of node N.  X??Y indicates
+that node X is unordered with respect to node Y.  It is assumed that
+the case where F is D, or where F is the order proxy for D, 
+has already been handled." >
+		   <artwork align="left"><![CDATA[
++------+------------+------+------------------------------+------------+
+| D    | MRT blue   | F    | additional      | F          | Alternate  |
+| wrt  | and red    | wrt  | criteria        | wrt        |            |
+| S    | path       | S    |                 | MRT        |            |
+|      | properties |      |                 | (deduced)  |            |
++------+------------+------+-----------------+------------+------------+
+| D>>S | Blue path: | F>>S | additional      | F on an    | Use Red    |
+| and  | Increasing | only | criteria        | increasing | to avoid   |
+| D<<S,| path to R. |      | not needed      | path from  | F          |
+| D is | Red path:  |      |                 | S to R     |            |
+| R,   | Decreasing +------+-----------------+------------+------------+
+|      | path to R. | F<<S | additional      | F on a     | Use Blue   |
+|      |            | only | criteria        | decreasing | to avoid   |
+|      |            |      | not needed      | path from  | F          |
+| or   |            |      |                 | S to R     |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F>>S | topo(F)>topo(D) | F on a     | Use Blue   |
+| S is | Blue path: | and  | implies that    | decreasing | to avoid   |
+| R    | Increasing | F<<S | F>>D or F??D    | path from  | F          |
+|      | path to D. |      |                 | S to D or  |            |
+|      | Red path:  |      |                 | neither    |            |
+|      | Decreasing |      +-----------------+------------+------------+
+|      | path to D. |      | topo(F)<topo(D) | F on an    | Use Red    |
+|      |            |      | implies that    | increasing | to avoid   |
+|      |            |      | F<<D or F??D    | path from  | F          |
+|      |            |      |                 | S to D or  |            |
+|      |            |      |                 | neither    |            |
++------+------------+------+-----------------+------------+------------+
+| D>>S | Blue path: | F<<S | additional      | F on       | Use Blue   |
+| only | Increasing | only | criteria        | decreasing | to avoid   |
+|      | shortest   |      | not needed      | path from  | F          |
+|      | path from  |      |                 | S to R     |            |
+|      | S to D.    +------+-----------------+------------+------------+
+|      | Red path:  | F>>S | topo(F)>topo(D) | F on       | Use Blue   |
+|      | Decreasing | only | implies that    | decreasing | to avoid   |
+|      | shortest   |      | F>>D or F??D    | path from  | F          |
+|      | path from  |      |                 | R to D     |            |
+|      | S to R,    |      |                 | or         |            |
+|      | then       |      |                 | neither    |            |
+|      | decreasing |      +-----------------+------------+------------+
+|      | shortest   |      | topo(F)<topo(D) | F on       | Use Red    |
+|      | path from  |      | implies that    | increasing | to avoid   |
+|      | R to D.    |      | F<<D or F??D    | path from  | F          |
+|      |            |      |                 | S to D     |            |
+|      |            |      |                 | or         |            |
+|      |            |      |                 | neither    |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F>>S | additional      | F on Red   | Use Blue   |
+|      |            | and  | criteria        |            | to avoid   |
+|      |            | F<<S,| not needed      |            | F          |
+|      |            | F is |                 |            |            |
+|      |            | R    |                 |            |            |
++------+------------+------+-----------------+------------+------------+
+| D<<S | Blue path: | F>>S | additional      | F on       | Use Red    |
+| only | Increasing | only | criteria        | increasing | to avoid   |
+|      | shortest   |      | not needed      | path from  | F          |
+|      | path from  |      |                 | S to R     |            |
+|      | S to R,    +------+-----------------+------------+------------+
+|      | then       | F<<S | topo(F)>topo(D) | F on       | Use Blue   |
+|      | increasing | only | implies that    | decreasing | to avoid   |
+|      | shortest   |      | F>>D or F??D    | path from  | F          |
+|      | path from  |      |                 | R to D     |            |
+|      | R to D.    |      |                 | or         |            |
+|      | Red path:  |      |                 | neither    |            |
+|      | Decreasing |      +-----------------+------------+------------+
+|      | shortest   |      | topo(F)<topo(D) | F on       | Use Red    |
+|      | path from  |      | implies that    | increasing | to avoid   |
+|      | S to D.    |      | F<<D or F??D    | path from  | F          |
+|      |            |      |                 | S to D     |            |
+|      |            |      |                 | or         |            |
+|      |            |      |                 | neither    |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F>>S | additional      | F on Blue  | Use Red    |   
+|      |            | and  | criteria        |            | to avoid   |
+|      |            | F<<S,| not             |            | F          |
+|      |            | F is | needed          |            |            |
+|      |            | R    |                 |            |            |
++------+------------+------+-----------------+------------+------------+
+| D??S | Blue path: | F<<S | additional      | F on a     | Use Red    |
+|      | Decr. from | only | criteria        | decreasing | to avoid   |
+|      | S to first |      | not needed      | path from  | F          |
+|      | node H>>D, |      |                 | S to H.    |            |
+|      | then incr. +------+-----------------+------------+------------+
+|      | to D.      | F>>S | additional      | F on an    | Use Blue   |
+|      | Red path:  | only | criteria        | increasing | to avoid   |
+|      | Incr. from |      | not needed      | path from  | F          |
+|      | S to first |      |                 | S to G     |            |
+|      | node G<<D, |      |                 |            |            |
+|      | then decr. |      |                 |            |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F>>S | GADAG link      | F on an    | Use Blue   |   
+|      |            | and  | direction       | incr. path | to avoid   |
+|      |            | F<<S,| S->F            | from S     | F          |
+|      |            | F is +-----------------+------------+------------+
+|      |            | R    | GADAG link      | F on a     | Use Red    |
+|      |            |      | direction       | decr. path | to avoid   |
+|      |            |      | S<-F            | from S     | F          |
+|      |            |      +-----------------+------------+------------+
+|      |            |      | GADAG link      | Implies F is the order  |
+|      |            |      | direction       | proxy for D, which has  |
+|      |            |      | S<-->F          | already been handled.   |
++------+------------+------+-----------------+------------+------------+
 ]]></artwork>
 </figure>
 
 
-<t>If either D&gt;&gt;S&gt;&gt;F or D&lt;&lt;S&lt;&lt;F holds true,
-the situation is simple: in the first case we should choose the
-increasing Blue next-hop, in the second case, the decreasing Red
-next-hop is the right choice.</t>
-   
-<t>However, when both D and F are greater than S the situation is not
-so simple, there can be three possibilities: (i) F&gt;&gt;D (ii)
-F&lt;&lt;D or (iii) F and D are not ordered. In the first case, we
-should choose the path towards D along the Blue tree.  In contrast, in
-case (ii) the Red path towards the root and then to D would be the
-solution.  Finally, in case (iii) both paths would be acceptable.
-However, observe that if e.g.  F.topo_order&gt;D.topo_order, either
-case (i) or case (iii) holds true, which means that selecting the Blue
-next-hop is safe.  Similarly, if F.topo_order&lt;D.topo_order, we
-should select the Red next-hop.  The situation is almost the same if
-both F and D are less than S.</t>
-
-<t> Recall that we have added each link to the GADAG in some
-direction, so it is impossible that S and F are not ordered.  But it
-is possible that S and D are not ordered, so we need to deal with this
-case as well.  If F&lt;&lt;S, we can use the Red next-hop, because
-that path is first increasing until a node definitely greater than D
-is reached, then decreasing; this path must avoid using F. Similarly,
-if F&gt;&gt;S, we should use the Blue next-hop.</t>
-
-<t>Additionally, the cases where either F or D is ordered both higher
-and lower must be considered; this can happen when one is a block-
-root or its order_proxy is.  If D is both higher and lower than S,
-then the MRT to use is the one that avoids F so if F is higher, then
-the MRT-Red should be used and if F is lower, then the MRT-Blue should
-be used; F and S must be ordered because they are neighbors.  If F is
-both higher and lower, then if D is lower, using the MRT-Red to
-decrease reaches D and if D is higher, using the Blue MRT to increase
-reaches D; if D is unordered compared to S, then the situation is a
-bit more complicated.
-</t>
-
-<t> In the case where F&lt;&lt;S&lt;&lt;F and D and S are unordered,
-the direction of the link in the GADAG between S and F should be
-examined.  If the link is directed S -&gt; F, then use the MRT-Blue
-(decrease to avoid that link and then increase).  If the link is
-directed S &lt;- F, then use the MRT-Red (increase to avoid that link
-and then decrease).  If the link is S &lt;--&gt; F, then the link must
-be a cut-link and there is no node-protecting alternate.  If there are
-multiple links between S and F, then they can protect against each
-other; of course, in this situation, they are probably already ECMP.
-</t>
-
-<t>Finally, there is the case where D is also F. In this case, only
-link protection is possible.  The MRT that doesn't use the indicated
-primary next-hop is used.  If both MRTs use the primary next-hop, then
-the primary next-hop must be a cut-link so either MRT could be used
-but the set of MRT next-hops must be pruned to avoid that primary
-next-hop.  To indicate this case, Select_Alternates returns
-AVOID_LINK_ON_BLUE.</t>
 
 <t>As an example, consider the ADAG depicted in <xref
 target="ADAG-for-nh-sel"/> and first suppose that G is the source, D
