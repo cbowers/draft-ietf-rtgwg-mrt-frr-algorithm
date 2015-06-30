@@ -1901,7 +1901,7 @@ Select_Alternates_Internal(D, F, primary_intf,
             return USE_RED
         if F.LOWER
             return USE_BLUE  
-    if D_higher
+    else if D_higher
         if F.HIGHER and F.LOWER
             return USE_BLUE
         if F.LOWER
@@ -1911,7 +1911,7 @@ Select_Alternates_Internal(D, F, primary_intf,
                 return USE_BLUE
             if (F.topo_order < D_topo_order)
                 return USE_RED
-    if D_lower
+    else if D_lower
         if F.HIGHER and F.LOWER
             return USE_RED
         if F.HIGHER
