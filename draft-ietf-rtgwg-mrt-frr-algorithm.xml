@@ -372,13 +372,11 @@ target="RFC2119"/></t>
      is determined, the link is marked as UNDIRECTED to indicate that
      its direction hasn't been determined.</t>
 
-    <t hangText="OUTGOING: ">In the GADAG, each link is marked as
-    OUTGOING, INCOMING or both.  A link marked as OUTGOING has
-    direction from the interface's router to the remote end.</t>
+    <t hangText="OUTGOING: ">A link marked as OUTGOING has direction
+    in the GADAG from the interface's router to the remote end.</t>
 
-    <t hangText="INCOMING: ">In the GADAG, each link is marked as
-    OUTGOING, INCOMING or both.  A link marked as INCOMING has
-    direction from the remote end to the interface's router.</t>
+    <t hangText="INCOMING: ">A link marked as INCOMING has direction
+    in the GADAG from the remote end to the interface's router.</t>
    </list></t>
 
 </section>
