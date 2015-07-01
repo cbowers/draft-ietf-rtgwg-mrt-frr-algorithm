@@ -12,11 +12,11 @@
 <!ENTITY RFC5286 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5286.xml">
 <!ENTITY RFC3137 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3137.xml">
 <!ENTITY RFC5120 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5120.xml">
+<!ENTITY RFC7490 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7490.xml">
 
 <!ENTITY I-D.ietf-rtgwg-lfa-manageability SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-lfa-manageability.xml">
 
 <!ENTITY I-D.ietf-rtgwg-ipfrr-notvia-addresses SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-ipfrr-notvia-addresses.xml">
-<!ENTITY I-D.ietf-rtgwg-remote-lfa SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-remote-lfa.xml">
 
 
 ]>
@@ -782,14 +782,14 @@ or Redundant Trees are combined into a GADAG or MRT.</t>
 [E]---|    [J]-------[I]   [P]---[O]
  |    |     |         |     |     |
  |    |     |         |     |     |
-[R]  [D]---[C]--[F]  [H]---[K]   [N]      
+[R]  [D]---[C]--[F]  [H]---[K]   [N]
  |          |    |    |     |     |
  |          |    |    |     |     |
 [A]--------[B]  [G]---|    [L]---[M]
 
 (a)  A graph with four blocks that are:
      three 2-connected clusters 
-	 and one cut-link
+     and one cut-link
 
 
 [E]<--|    [J]<------[I]   [P]<--[O]
@@ -895,7 +895,7 @@ title="Ear-based method for computing local-roots">
    (Thus, s is not e, if there is such ear.)
    if s is e
       for each node x in the ear that is not s
-     	  x.localroot = s
+          x.localroot = s
    else
       for each node x in the ear that is not s or e
           x.localroot = e.localroot
@@ -1024,7 +1024,7 @@ the algorithm.</t>
 target="interface_ordering"/> relies on the interface.metric and the
 interface.neighbor.mrt_node_id values to order interfaces.  The exact
 source of these values for different IGPs (or flooding protocol in the
-case of ISIS-PCR <xref target="I-D.farkas-isis-pcr"/>) and
+case of ISIS-PCR <xref target="I-D.ietf-isis-pcr"/>) and
 applications is specified in <xref
 target="mrt_node_id_and_metric"/>. The metric and mrt_node_id values
 for OSPFv2, OSPFv3, and IS-IS provided here is normative.  The metric
@@ -1033,15 +1033,15 @@ informational. </t>
 
 <figure anchor = "mrt_node_id_and_metric" align="center" title="value of interface.neighbor.mrt_node_id 
 and interface.metric to be used for ranking interfaces,
-for different flooding protocols and applications  " >
-		   <artwork align="center"><![CDATA[
+for different flooding protocols and applications" >
+<artwork align="center"><![CDATA[
 +--------------+-----------------------+-----------------------------+
-| IGP/flooding | mrt_node_id           | metric of                   |  
+| IGP/flooding | mrt_node_id           | metric of                   |
 | protocol     | of neighbor           | interface                   |
 | and          | on interface          |                             |
 | application  |                       |                             |
 +--------------+-----------------------+-----------------------------+
-| OSPFv2 for   | 4 octet Neighbor      | 2 octet Metric field        |   
+| OSPFv2 for   | 4 octet Neighbor      | 2 octet Metric field        |
 | IP/LDP FRR   | Router ID in          | for corresponding           |
 |              | Link ID field for     | point-to-point link         |
 |              | corresponding         | in Router-LSA               |
@@ -1051,20 +1051,20 @@ for different flooding protocols and applications  " >
 | OSPFv3 for   | 4 octet Neighbor      | 2 octet Metric field        |
 | IP/LDP FRR   | Router ID field       | for corresponding           |
 |              | for corresponding     | point-to-point link         |
-|              | point-to-point link   | in Router-LSA               | 
+|              | point-to-point link   | in Router-LSA               |
 |              | in Router-LSA         |                             |
 +--------------+-----------------------+-----------------------------+
-| IS-IS for    | 7 octet neighbor      | 3 octet metric field        |   
+| IS-IS for    | 7 octet neighbor      | 3 octet metric field        |
 | IP/LDP FRR   | system ID and         | in Extended IS              |
 |              | pseudonode number     | Reachability TLV #22        |
 |              | in Extended IS        | or Multi-Topology           |
-|              | Reachability TLV #22  | IS Neighbor TLV #222        | 
-|              | or Multi-Topology     |                             |  
+|              | Reachability TLV #22  | IS Neighbor TLV #222        |
+|              | or Multi-Topology     |                             |
 |              | IS Neighbor TLV #222  |                             |
 +--------------+-----------------------+-----------------------------+
-| ISIS-PCR for | 8 octet Bridge ID     | 3 octet SPB-LINK-METRIC in  |  
-| protection   | created from  2 octet | SPB-Metric sub-TLV (type 29)| 
-| of traffic   | Bridge Priority in    | in Extended IS Reachability |  
+| ISIS-PCR for | 8 octet Bridge ID     | 3 octet SPB-LINK-METRIC in  |
+| protection   | created from  2 octet | SPB-Metric sub-TLV (type 29)|
+| of traffic   | Bridge Priority in    | in Extended IS Reachability |
 | in bridged   | SPB Instance sub-TLV  | TLV #22 or Multi-Topology   |
 | networks     | (type 1) carried in   | Intermediate Systems        |
 |              | MT-Capability TLV     | TLV #222.  In the case      |
@@ -1315,7 +1315,7 @@ Construct_GADAG_via_Lowpoint(topology, gadag_root)
 title="Augmenting the GADAG by directing all links" >
 
 <t>The GADAG, regardless of the algorithm used to construct it, at
-this point could be used to find MRTs but the topology does not
+this point could be used to find MRTs, but the topology does not
 include all links in the network graph.  That has two impacts.  First,
 there might be shorter paths that respect the GADAG partial ordering
 and so the alternate paths would not be as short as possible.  Second,
@@ -1412,7 +1412,7 @@ Add_Undirected_Block_Root_Links(topo, gadag_root):
                             i3.remote_intf.PROCESSED = true
                             i3.INCOMING = true
                             i3.remote_intf.OUTGOING = true
-                     
+
 Modify_Block_Root_Incoming_Links(topo, gadag_root):
     foreach node x in topo
         if x.IS_CUT_VERTEX or x is gadag_root
@@ -1479,8 +1479,8 @@ Add_Undirected_Links(topo, gadag_root)
     Add_Undirected_Block_Root_Links(topo, gadag_root)
     Run_Topological_Sort_GADAG(topo, gadag_root)
     Set_Other_Undirected_Links_Based_On_Topo_Order(topo)
-	
-Add_Undirected_Links(topo, gadag_root)	
+
+Add_Undirected_Links(topo, gadag_root)
 ]]></artwork>
 </figure>
 
@@ -1795,8 +1795,8 @@ SPF_No_Traverse_Block_Root(spf_root, block_root, direction)
        if ((min_node is spf_root) or (min_node is not block_root))
           foreach interface intf of min_node
                 if ( ( ((direction is FORWARD) and intf.OUTGOING) or
-                       ((direction is REVERSE) and intf.INCOMING) )
-                       and In_Common_Block(spf_root, intf.remote_node) )
+                    ((direction is REVERSE) and intf.INCOMING) )
+                    and In_Common_Block(spf_root, intf.remote_node) )
                 path_metric = min_node.spf_metric + intf.metric
                 if path_metric < intf.remote_node.spf_metric
                    intf.remote_node.spf_metric = path_metric
@@ -1930,13 +1930,13 @@ Select_Alternates_Internal(D, F, primary_intf,
             return USE_RED
         if F.HIGHER
             return USE_BLUE
-			
+
 Select_Alternates(D, F, primary_intf)
     if (D is F) or (D.order_proxy is F)
         return PRIM_NH_IS_D_OR_OP_FOR_D
-	D_lower = D.order_proxy.LOWER
-	D_higher = D.order_proxy.HIGHER
-	D_topo_order = D.order_proxy.topo_order
+    D_lower = D.order_proxy.LOWER
+    D_higher = D.order_proxy.HIGHER
+    D_topo_order = D.order_proxy.topo_order
     return Select_Alternates_Internal(D, F, primary_intf,
                                       D_lower, D_higher, D_topo_order)
 ]]></artwork>
@@ -1994,7 +1994,7 @@ topo(N) indicates the topological sort value of node N.  X??Y indicates
 that node X is unordered with respect to node Y.  It is assumed that
 the case where F is D, or where F is the order proxy for D, 
 has already been handled." >
-		   <artwork align="left"><![CDATA[
+<artwork align="left"><![CDATA[
 +------+------------+------+------------------------------+------------+
 | D    | MRT blue   | F    | additional      | F          | Alternate  |
 | wrt  | and red    | wrt  | criteria        | wrt        |            |
@@ -2067,7 +2067,7 @@ has already been handled." >
 |      |            |      |                 | or         |            |
 |      |            |      |                 | neither    |            |
 |      |            +------+-----------------+------------+------------+
-|      |            | F>>S | additional      | F on Blue  | Use Red    |   
+|      |            | F>>S | additional      | F on Blue  | Use Red    |
 |      |            | and  | criteria        |            | to avoid   |
 |      |            | F<<S,| not             |            | F          |
 |      |            | F is | needed          |            |            |
@@ -2085,7 +2085,7 @@ has already been handled." >
 |      | node G<<D, |      |                 |            |            |
 |      | then decr. |      |                 |            |            |
 |      |            +------+-----------------+------------+------------+
-|      |            | F>>S | GADAG link      | F on an    | Use Blue   |   
+|      |            | F>>S | GADAG link      | F on an    | Use Blue   |
 |      |            | and  | direction       | incr. path | to avoid   |
 |      |            | F<<S,| S->F            | from S     | F          |
 |      |            | F is +-----------------+------------+------------+
@@ -2176,13 +2176,13 @@ than any other node. Always take the first rule that matches.
 <figure align="center">
 <artwork align="left"><![CDATA[
 
-Rule   Condition     Blue NH	  Red NH        Notes
- 1       S=X	     Blue to A	  Red to B
- 2       S<<A	     Blue to A	  Red to R
- 3       S>>B	     Blue to R	  Red to B
- 4       A<<S<<B     Red to A	  Blue to B
- 5       A<<S	     Red to A	  Blue to R     S not ordered w/ B
- 6       S<<B	     Red to R	  Blue to B     S not ordered w/ A
+Rule   Condition     Blue NH      Red NH        Notes
+ 1       S=X         Blue to A    Red to B
+ 2       S<<A        Blue to A    Red to R
+ 3       S>>B        Blue to R    Red to B
+ 4       A<<S<<B     Red to A     Blue to B
+ 5       A<<S        Red to A     Blue to R     S not ordered w/ B
+ 6       S<<B        Red to R     Blue to B     S not ordered w/ A
  7     Otherwise     Red to R     Blue to R     S not ordered w/ A+B
 ]]></artwork>
 </figure>
@@ -2196,42 +2196,42 @@ computing router:
 <figure align="center">
 <artwork align="left"><![CDATA[
 Select_Proxy_Node_NHs(P, S, X, Y)
-	if (X.order_proxy.topo_order < Y.order_proxy.topo_order)
-		//This fits even if X.order_proxy=S.local_root
-		A=X.order_proxy
-		B=Y.order_proxy
-	else
-		A=Y.order_proxy
-		B=X.order_proxy
-		
-	if (S==A.local_root)
-		P.blue_next_hops = A.blue_next_hops
-		P.red_next_hops  = B.red_next_hops
-		return
-	if (A.higher)
-		P.blue_next_hops = A.blue_next_hops
-		P.red_next_hops  = R.red_next_hops
-		return
-	if (B.lower)
-		P.blue_next_hops = R.blue_next_hops
-		P.red_next_hops  = B.red_next_hops
-		return
-	if (A.lower && B.higher)
-		P.blue_next_hops = A.red_next_hops
-		P.red_next_hops  = B.blue_next_hops
-		return
-	if (A.lower)
-		P.blue_next_hops = R.red_next_hops
-		P.red_next_hops  = B.blue_next_hops
-		return
-	if (B.higher)
-		P.blue_next_hops = A.red_next_hops
-		P.red_next_hops  = R.blue_next_hops
-		return
-	P.blue_next_hops = R.red_next_hops
-	P.red_next_hops  = R.blue_next_hops
-	return
-		
+    if (X.order_proxy.topo_order < Y.order_proxy.topo_order)
+        //This fits even if X.order_proxy=S.local_root
+        A=X.order_proxy
+        B=Y.order_proxy
+    else
+        A=Y.order_proxy
+        B=X.order_proxy
+
+    if (S==A.local_root)
+        P.blue_next_hops = A.blue_next_hops
+        P.red_next_hops  = B.red_next_hops
+        return
+    if (A.higher)
+        P.blue_next_hops = A.blue_next_hops
+        P.red_next_hops  = R.red_next_hops
+        return
+    if (B.lower)
+        P.blue_next_hops = R.blue_next_hops
+        P.red_next_hops  = B.red_next_hops
+        return
+    if (A.lower && B.higher)
+        P.blue_next_hops = A.red_next_hops
+        P.red_next_hops  = B.blue_next_hops
+        return
+    if (A.lower)
+        P.blue_next_hops = R.red_next_hops
+        P.red_next_hops  = B.blue_next_hops
+        return
+    if (B.higher)
+        P.blue_next_hops = A.red_next_hops
+        P.red_next_hops  = R.blue_next_hops
+        return
+    P.blue_next_hops = R.red_next_hops
+    P.red_next_hops  = R.blue_next_hops
+    return
+
 ]]></artwork>
 </figure>
 
@@ -2321,7 +2321,7 @@ results.</t>
 
 <t>Since this document defines the MRT Lowpoint algorithm for use in
 fast-reroute applications, it is useful to compare MRT and Remote LFA
-<xref target="I-D.ietf-rtgwg-remote-lfa"/>.  This section compares MRT
+<xref target="RFC7490"/>.  This section compares MRT
 and remote LFA for IP Fast Reroute in 19 service provider network
 topologies, focusing on coverage and alternate path length.  <xref
 target="coverage_comparison_table"/> shows the node-protecting
@@ -2336,7 +2336,7 @@ later in this section.
 
 
 <figure anchor="coverage_comparison_table" align="center">
-		   <artwork align="center"><![CDATA[
+<artwork align="center"><![CDATA[
 +------------+-----------------------------+
 |  Topology  |    percentage of failure    |
 |            |    scenarios covered by     |
@@ -2365,7 +2365,7 @@ later in this section.
 |    T219    |   78    |   84    |   100   |
 +------------+---------+---------+---------+
 ]]></artwork>
-</figure>	
+</figure>
 
 <t>
 For the topologies analyzed here, LLFA is able to provide
@@ -2400,7 +2400,7 @@ alternates are on average 14 times longer than for optimal alternates.
  </t>
 
 <figure anchor="sample_path_cost_table" align="center">
-<artwork align="center"><![CDATA[		
+<artwork align="center"><![CDATA[
 +--------+------------------------------------------------+
 |        |     average relative alternate path length     |
 |        |-----------------------+------------------------+
@@ -2411,7 +2411,7 @@ alternates are on average 14 times longer than for optimal alternates.
 |  T208  |  78.2  |   66.0 | 13.6|  0.99  |  1.01  | 1.32 |
 +--------+--------+--------+-----+--------+--------+------+
 ]]></artwork>
-		</figure>
+</figure>
 
 <t>
 The network topology represented by T208 uses values of 10, 100, and
@@ -2495,7 +2495,7 @@ distribution.
 <vspace blankLines='100' />
 </t>
 <figure anchor="histogram_comparison_table1" align="center">
-		   <artwork align="center"><![CDATA[
+<artwork align="center"><![CDATA[
 +-------------------------------------------------------------------+
 |                              |   percentage of failure scenarios  |
 |        Topology name         |  protected by an alternate N hops  |
@@ -2546,7 +2546,7 @@ distribution.
 <vspace blankLines='100' />
 </t>
 <figure anchor="histogram_comparison_table2" align="center">
-		   <artwork align="center"><![CDATA[
+<artwork align="center"><![CDATA[
 +-------------------------------------------------------------------+
 |                              |   percentage of failure scenarios  |
 |        Topology name         |  protected by an alternate N hops  |
@@ -2597,7 +2597,7 @@ distribution.
 <vspace blankLines='100' />
 </t>
 <figure anchor="histogram_comparison_table3" align="center">
-		   <artwork align="center"><![CDATA[
+<artwork align="center"><![CDATA[
 +-------------------------------------------------------------------+
 |                              |   percentage of failure scenarios  |
 |        Topology name         |  protected by an alternate N hops  |
@@ -2648,7 +2648,7 @@ distribution.
 <vspace blankLines='100' />
 </t>
 <figure anchor="histogram_comparison_table4" align="center">
-		   <artwork align="center"><![CDATA[
+<artwork align="center"><![CDATA[
 +-------------------------------------------------------------------+
 |                              |   percentage of failure scenarios  |
 |        Topology name         |  protected by an alternate N hops  |
@@ -2751,7 +2751,7 @@ across more topologies or is sensitive to choice of GADAG root.
 <vspace blankLines='100' />
 </t>
 <figure anchor="algorithm_and_percentile_comparison_table" align="center">
-		   <artwork align="center"><![CDATA[
+<artwork align="center"><![CDATA[
 +-------------------------------------------------------------------+
 |        Topology name         |   percentage of failure scenarios  |
 |                              |  protected by an alternate N hops  |
@@ -2867,20 +2867,20 @@ be fully specified.</t>
      filing system or remote ones accessed by http (http://domain/dir/... ).-->
 
     <references title="Normative References">
-	
-	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-rtgwg-mrt-frr-architecture-05.xml"?>
+
+    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-rtgwg-mrt-frr-architecture-05.xml"?>
     &RFC2119;
     </references>
 
     <references title="Informative References">
     &RFC3137;
-	&RFC5120;
+    &RFC5120;
     &RFC5286;
     &RFC5714;
+    &RFC7490;
     &I-D.ietf-rtgwg-ipfrr-notvia-addresses;
-    &I-D.ietf-rtgwg-remote-lfa;
     &I-D.ietf-rtgwg-lfa-manageability;
-    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-farkas-isis-pcr-01.xml"?>
+    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-pcr-00.xml"?>
 	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-mrt-00.xml"?>
 	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-mpls-ldp-mrt-00.xml"?>
 	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-ospf-mrt-00.xml"?>	
@@ -3021,7 +3021,7 @@ Mod_SPF(spf_root, block_root)
 
 
 SPF_for_Ear(cand_intf.local_node,cand_intf.remote_node, block_root,
-			method)
+            method)
    Mark all interfaces between cand_intf.remote_node
               and cand_intf.local_node as TEMP_UNUSABLE   
    if cand_intf.local_node is not block_root
@@ -3031,11 +3031,11 @@ SPF_for_Ear(cand_intf.local_node,cand_intf.remote_node, block_root,
    y = end_ear.spf_prev_hop
    while y.local_node is not spf_root
      add_to_list_start(ear_list, y)
-     y.local_node.IN_GADAG = true	
+     y.local_node.IN_GADAG = true
      y = y.local_node.spf_prev_intf
    if(method is not hybrid)
       Set_Ear_Direction(ear_list, cand_intf.local_node,
-						end_ear,block_root)
+                        end_ear,block_root)
    Clear TEMP_UNUSABLE from all interfaces between
          cand_intf.remote_node and cand_intf.local_node       
    Clear TEMP_UNUSABLE from cand_intf.local_node
@@ -3147,13 +3147,13 @@ title="SPF-based GADAG algorithm">
 add_eligible_interfaces_of_node(ordered_intfs_tree,node)
    for each interface of node
       if intf.remote_node.IN_GADAG is false
-	insert(intf,ordered_intfs_tree)
+         insert(intf,ordered_intfs_tree)
 
 check_if_block_has_ear(x,block_id)
    block_has_ear = false
       for all interfaces of x
          if ( (intf.remote_node.block_id == block_id) && 
-		     intf.remote_node.IN_GADAG )
+               intf.remote_node.IN_GADAG )
             block_has_ear = true
 return block_has_ear
 
@@ -3174,28 +3174,26 @@ Construct_GADAG_via_SPF(topology, root)
            cand_intf.remote_intf.OUTGOING = true
            cand_intf.remote_intf.INCOMING = true
            cand_intf.remote_node.IN_GADAG = true
-	   add_eligible_interfaces_of_node(
-		ordered_intfs_tree,cand_intf.remote_node)
-	 else 
-	   if (cand_intf.remote_node.local_root ==
-			cand_intf.local_node) &&
-			check_if_block_has_ear
-				(cand_intf.local_node,
-				cand_intf.remote_node.block_id))
-			/* Skip the interface since the block root 
-			already	has an incoming interface in the
-			block */
-	   else
-		ear_end = SPF_for_Ear(cand_intf.local_node,
-				cand_intf.remote_node,
-				cand_intf.remote_node.localroot,
-				SPF method)
-		y = ear_end.spf_prev_hop
-		while y.local_node is not cand_intf.local_node
-                    add_eligible_interfaces_of_node(
-					ordered_intfs_tree,
-					y.local_node)
-                    y = y.local_node.spf_prev_intf
+        add_eligible_interfaces_of_node(
+                       ordered_intfs_tree,cand_intf.remote_node)
+     else 
+        if (cand_intf.remote_node.local_root ==
+            cand_intf.local_node) &&
+            check_if_block_has_ear(cand_intf.local_node,
+                         cand_intf.remote_node.block_id))
+            /* Skip the interface since the block root 
+            already has an incoming interface in the
+            block */
+        else
+        ear_end = SPF_for_Ear(cand_intf.local_node,
+                cand_intf.remote_node,
+                cand_intf.remote_node.localroot,
+                SPF method)
+        y = ear_end.spf_prev_hop
+        while y.local_node is not cand_intf.local_node
+            add_eligible_interfaces_of_node(
+                ordered_intfs_tree, y.local_node)
+            y = y.local_node.spf_prev_intf
 
 ]]></artwork>
 </figure>
@@ -3264,7 +3262,7 @@ find_spf_stack_ear(stack, x, y, xy_intf, block_root)
          intf.OUTGOING = true
          intf.remote_intf.INCOMING = true
          push prev onto stack
-	 cur = prev
+      cur = prev
       xy_intf.UNDIRECTED = false
       xy_intf.remote_intf.UNDIRECTED = false
       xy_intf.OUTGOING = true
