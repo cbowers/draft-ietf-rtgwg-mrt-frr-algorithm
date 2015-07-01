@@ -134,6 +134,7 @@ def Reset_Computed_Node_and_Intf_Values(topo):
             intf.OUTGOING_STORED = False
             intf.IN_MRT_ISLAND = False
 
+
 # This function takes a file with links represented by 2-digit 
 # numbers in the format:
 # 01,05,10    
@@ -833,7 +834,8 @@ def Write_GADAG_To_File(topo, file_prefix):
     gadag_edge_list.sort();
     filename = file_prefix + '_gadag.csv'
     with open(filename, 'w') as gadag_file:
-        gadag_file.write('local_node,remote_node,local_intf_link_data\n')
+        gadag_file.write('local_node,'\
+                         'remote_node,local_intf_link_data\n')
         for edge_string in gadag_edge_list:
             gadag_file.write(edge_string);
 
