@@ -1814,8 +1814,7 @@ SPF_No_Traverse_Block_Root(spf_root, block_root, direction)
 
 SetEdge(y)
   if y.blue_next_hops is empty and y.red_next_hops is empty
-     if (y.localroot != y)
-        SetEdge(y.localroot)
+     SetEdge(y.localroot)
      y.blue_next_hops = y.localroot.blue_next_hops
      y.red_next_hops = y.localroot.red_next_hops
      y.order_proxy = y.localroot.order_proxy
