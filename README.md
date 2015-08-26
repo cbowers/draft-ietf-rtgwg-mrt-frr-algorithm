@@ -10,3 +10,5 @@ You can generate the text version of the most recent XML commit by pasting the r
 http://xml2rfc.tools.ietf.org/
 
 https://raw.githubusercontent.com/cbowers/draft-ietf-rtgwg-mrt-frr-algorithm/master/draft-ietf-rtgwg-mrt-frr-algorithm.xml 
+
+http://xml2rfc.tools.ietf.org/cgi-bin/xml2rfc.cgi?url=https://raw.githubusercontent.com/cbowers/draft-ietf-rtgwg-mrt-frr-algorithm/master/draft-ietf-rtgwg-mrt-frr-algorithm.xml&modeAsFormat=txt/ascii&type=ascii
