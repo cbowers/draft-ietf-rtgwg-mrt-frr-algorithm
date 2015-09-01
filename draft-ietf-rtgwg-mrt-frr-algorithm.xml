@@ -1845,7 +1845,7 @@ Compute_MRT_NextHops(x, gadag_root)
            y.red_next_hops = x.localroot.blue_next_hops
 
    // Inherit next-hops and order_proxies to other components
-   if x is not gadag_root
+   if (x is not gadag_root) and (x.localroot is not gadag_root)
       gadag_root.blue_next_hops = x.localroot.blue_next_hops
       gadag_root.red_next_hops = x.localroot.red_next_hops
       gadag_root.order_proxy = x.localroot
