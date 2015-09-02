@@ -665,38 +665,10 @@ def Store_Primary_and_Alts_For_One_Src_To_Island_Dests(topo,x):
         x.alt_dict[y.node_id] = []
         Copy_List_Items(x.alt_dict[y.node_id], y.alt_list)
         
-def Store_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,x):
-    for prefix in topo.named_proxy_dict:
-        P = topo.named_proxy_dict[prefix]
-        x.blue_next_hops_dict[P.node_id] = []
-        x.red_next_hops_dict[P.node_id] = []
-        Copy_List_Items(x.blue_next_hops_dict[P.node_id],
-                        P.blue_next_hops)
-        Copy_List_Items(x.red_next_hops_dict[P.node_id],
-                        P.red_next_hops)
-        if P.convert_blue_to_green:
-            x.blue_to_green_nh_dict[P.node_id] = True
-        if P.convert_red_to_green:
-            x.red_to_green_nh_dict[P.node_id] = True
-        
-def Store_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,x):
-    for prefix in topo.named_proxy_dict:
-        P = topo.named_proxy_dict[prefix]
-        x.alt_dict[P.node_id] = []
-        Copy_List_Items(x.alt_dict[P.node_id],
-                        P.alt_list)               
-
 def Store_Primary_NHs_For_One_Source_To_Nodes(topo,x):
     for y in topo.node_list:
         x.pnh_dict[y.node_id] = []
         Copy_List_Items(x.pnh_dict[y.node_id], y.primary_next_hops)
-        
-def Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,x):
-    for prefix in topo.named_proxy_dict:
-        P = topo.named_proxy_dict[prefix]
-        x.pnh_dict[P.node_id] = []        
-        Copy_List_Items(x.pnh_dict[P.node_id],
-                        P.primary_next_hops)
 
 
 def Select_Alternates_Internal(D, F, primary_intf,
@@ -740,9 +712,8 @@ def Select_Alternates_Internal(D, F, primary_intf,
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
-                assert(False)
+                assert(False) 
             if primary_intf.OUTGOING:
-                # this case isn't hit it topo-9e
                 return 'USE_BLUE'
             if primary_intf.INCOMING:
                 return 'USE_RED'
@@ -761,20 +732,37 @@ def Select_Alternates(D, F, primary_intf):
     D_topo_order = D.order_proxy.topo_order
     return Select_Alternates_Internal(D, F, primary_intf,
                                       D_lower, D_higher, D_topo_order)
-      
+
+
 def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
     Normal_SPF(topo, x)
     for D in topo.island_node_list:
         D.alt_list = []
         if D is x:
             continue
-        for primary_intf in D.primary_next_hops:
+
+        for failed_intf in D.primary_next_hops:  
             alt = Alternate()
-            alt.failed_intf = primary_intf
-            if primary_intf in x.island_intf_list:
+            alt.failed_intf = failed_intf
+            #If there are ECMP primary next-hops, use them if they
+            #don't share the same remote node as the failed interface
+            cand_alt_list = []
+            for primary_intf in D.primary_next_hops:
+                if (primary_intf.remote_node is 
+                    not failed_intf.remote_node):
+                    cand_alt_list.append(primary_intf)
+            if cand_alt_list != []: #Good ECMP exists
+                Copy_List_Items(alt.nh_list, cand_alt_list)
+                alt.fec = 'GREEN'
+                alt.prot = 'ECMP_TO_DIFFERENT_REMOTE_NODE'      
+            elif failed_intf in x.island_intf_list:
                 alt.info = Select_Alternates(D,
-                    primary_intf.remote_node, primary_intf)
+                    failed_intf.remote_node, failed_intf)
             else:
+                #The primary next-hop is not in the MRT Island. 
+                #Either red or blue will avoid the primary next-hop,
+                #because the primary next-hop is not even in the
+                #GADAG.  For simplicity, we choose blue here.
                 alt.info = 'PRIM_NH_NOT_IN_ISLAND'
                 Copy_List_Items(alt.nh_list, D.blue_next_hops)
                 alt.fec = 'BLUE'
@@ -788,16 +776,16 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                 alt.fec = 'RED'
                 alt.prot = 'NODE_PROTECTION'
             if (alt.info == 'PRIM_NH_IS_D_OR_OP_FOR_D'):
-                if primary_intf.OUTGOING and primary_intf.INCOMING:
+                if failed_intf.OUTGOING and failed_intf.INCOMING:
                     # cut-link: if there are parallel cut links, use
                     # the link(s) with lowest metric that are not 
                     # primary intf or None
                     cand_alt_list = [None]
                     min_metric = 2147483647
                     for intf in x.island_intf_list:
-                        if ( intf is not primary_intf and
+                        if ( intf is not failed_intf and
                              (intf.remote_node is 
-                             primary_intf.remote_node)):
+                             failed_intf.remote_node)):
                             if intf.metric < min_metric:
                                 cand_alt_list = [intf]
                                 min_metric = intf.metric
@@ -810,7 +798,7 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                         alt.fec = 'NO_ALTERNATE'
                         alt.prot = 'NO_PROTECTION'
                     Copy_List_Items(alt.nh_list, cand_alt_list)
-                elif primary_intf in D.red_next_hops:
+                elif failed_intf in D.red_next_hops:
                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
                     alt.fec = 'BLUE'
                     alt.prot = 'LINK_PROTECTION'
@@ -818,7 +806,7 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                     Copy_List_Items(alt.nh_list, D.red_next_hops)
                     alt.fec = 'RED'
                     alt.prot = 'LINK_PROTECTION'
-            D.alt_list.append(alt) 
+            D.alt_list.append(alt)
 
 def Write_GADAG_To_File(topo, file_prefix):
     gadag_edge_list = []
@@ -911,7 +899,6 @@ def Write_Alternates_For_All_Dests_To_File(topo, file_prefix):
         for edge_string in edge_list:
             alt_file.write(edge_string);
 
-
 def Raise_GADAG_Root_Selection_Priority(topo,node_id):
     node = topo.node_dict[node_id]
     node.GR_sel_priority = 255
@@ -999,6 +986,8 @@ def Generate_Example_Topology_and_Run_MRT():
     Write_Output_To_Files(topo, res_file_base)
 
 Generate_Example_Topology_and_Run_MRT()
+
+
 
 
 
