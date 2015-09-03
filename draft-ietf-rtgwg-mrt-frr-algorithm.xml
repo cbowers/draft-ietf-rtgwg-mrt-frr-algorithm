@@ -1357,7 +1357,7 @@ target="topo_sort_links"/></t>
 <figure anchor="topo_sort_links" align="center"
 title="Assigning direction to UNDIRECTED links">
 <artwork align="center"><![CDATA[
-Add_Undirected_Block_Root_Links(topo, gadag_root):
+Add_Undirected_Block_Root_Links(topo, gadag_root)
     foreach node x in topo
         if x.IS_CUT_VERTEX or x is gadag_root
             foreach interface i of x
@@ -1413,7 +1413,7 @@ Add_Undirected_Block_Root_Links(topo, gadag_root):
                             i3.INCOMING = true
                             i3.remote_intf.OUTGOING = true
 
-Modify_Block_Root_Incoming_Links(topo, gadag_root):
+Modify_Block_Root_Incoming_Links(topo, gadag_root)
     foreach node x in topo
         if x.IS_CUT_VERTEX or x is gadag_root
             foreach interface i of x
@@ -1424,23 +1424,23 @@ Modify_Block_Root_Incoming_Links(topo, gadag_root):
                         i.remote_intf.OUTGOING = false
                         i.remote_intf.OUTGOING_STORED = true
 
-Revert_Block_Root_Incoming_Links(topo, gadag_root):
+Revert_Block_Root_Incoming_Links(topo, gadag_root)
     foreach node x in topo
         if x.IS_CUT_VERTEX or x is gadag_root
             foreach interface i of x
                 if i.remote_node.localroot is x
-                    if i.INCOMING_STORED:
+                    if i.INCOMING_STORED
                         i.INCOMING = true
                         i.remote_intf.OUTGOING = true
                         i.INCOMING_STORED = false
                         i.remote_intf.OUTGOING_STORED = false
 
-Run_Topological_Sort_GADAG(topo, gadag_root):
+Run_Topological_Sort_GADAG(topo, gadag_root)
     Modify_Block_Root_Incoming_Links(topo, gadag_root)
-    foreach node x in topo:
+    foreach node x in topo
         node.unvisited = 0
-        foreach interface i of x:
-            if (i.INCOMING):
+        foreach interface i of x
+            if (i.INCOMING)
                 node.unvisited += 1
     Initialize working_list to empty
     Initialize topo_order_list to empty
@@ -1460,7 +1460,7 @@ Run_Topological_Sort_GADAG(topo, gadag_root):
         next_topo_order += 1
     Revert_Block_Root_Incoming_Links(topo, gadag_root)
 
-def Set_Other_Undirected_Links_Based_On_Topo_Order(topo):
+def Set_Other_Undirected_Links_Based_On_Topo_Order(topo)
     foreach node x in topo
         foreach interface i of x
             if i.UNDIRECTED:
@@ -2100,19 +2100,17 @@ has already been handled." >
 ]]></artwork>
 </figure>
 
-
-
-<t>As an example, consider the ADAG depicted in <xref
-target="ADAG-for-nh-sel"/> and first suppose that G is the source, D
-is the destination and H is the failed next-hop.  Since D&gt;&gt;G, we
-need to compare H.topo_order and D.topo_order.  Since
-D.topo_order&gt;H.topo_order, D must be not smaller than H, so we
-should select the decreasing path towards the root. If, however, the
-destination were instead J, we must find that
-H.topo_order&gt;J.topo_order, so we must choose the increasing Blue
-next-hop to J, which is I.  In the case, when instead the destination
-is C, we find that we need to first decrease to avoid using H, so the
-Blue, first decreasing then increasing, path is selected.</t>
+ <t>As an example, consider the ADAG depicted in <xref 
+target="ADAG-for-nh-sel"/> and first suppose that G is the source, D is 
+the destination and H is the failed next-hop. Since D&gt;&gt;G, we need 
+to compare H.topo_order and D.topo_order. Since 
+D.topo_order&gt;H.topo_order, D must be not smaller than H, so we should 
+select the decreasing path towards the root. If, however, the 
+destination were instead J, we must find that 
+H.topo_order&gt;J.topo_order, so we must choose the increasing Blue 
+next-hop to J, which is I. In the case, when instead the destination is 
+C, we find that we need to first decrease to avoid using H, so the Blue, 
+first decreasing then increasing, path is selected.</t> 
 
 <figure anchor="ADAG-for-nh-sel" align="center">
 <artwork align="center"><![CDATA[
@@ -2128,6 +2126,7 @@ Blue, first decreasing then increasing, path is selected.</t>
   a 2-connected graph    
 ]]></artwork>
 </figure>
+
 </section>
 
 <section anchor="sec_proxy_nodes" title="Finding FRR Next-Hops for Proxy-Nodes">
