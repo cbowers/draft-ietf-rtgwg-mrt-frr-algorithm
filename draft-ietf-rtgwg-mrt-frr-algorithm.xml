@@ -13,6 +13,8 @@
 <!ENTITY RFC3137 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3137.xml">
 <!ENTITY RFC5120 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5120.xml">
 <!ENTITY RFC7490 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7490.xml">
+<!ENTITY RFC2328 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2327.xml">
+
 
 <!ENTITY I-D.ietf-rtgwg-lfa-manageability SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-lfa-manageability.xml">
 
@@ -260,9 +262,9 @@ target="RFC2119"/></t>
 
      <t hangText="network graph: ">A graph that reflects the network
      topology where all links connect exactly two nodes and broadcast
-     links have been transformed into a pseudo-node representation
+     links have been transformed into a pseudonode representation
      (e.g. in OSPF, viewing a Network LSA as representing a
-     pseudo-noe).</t>
+     pseudonode).</t>
 
      <t hangText="Redundant Trees (RT):"> A pair of trees where the
      path from any node X to the root R on the first tree is
@@ -1080,15 +1082,15 @@ for different flooding protocols and applications" >
 ]]></artwork>
 </figure>
 
-<t>
-The metrics are unsigned integers and MUST be compared as unsigned
-integers.  The results of mrt_node_id comparisons MUST be the same as
-would be obtained by converting the mrt_node_ids to unsigned integers
-using network byte order and performing the comparison as unsigned
-integers.  Also note that these values are only specified in the case
-of point-to-point links.  Therefore, in the case of IS-IS for IP/LDP
-FRR, the pseudonode number (the 7th octet) will always be zero.
-</t>
+<t> The metrics are unsigned integers and MUST be compared as unsigned 
+integers. The results of mrt_node_id comparisons MUST be the same as 
+would be obtained by converting the mrt_node_ids to unsigned integers 
+using network byte order and performing the comparison as unsigned 
+integers. In the case of IS-IS for IP/LDP FRR with point-to-point links, 
+the pseudonode number (the 7th octet) is zero. Broadcast interfaces 
+will be discussed in <xref target="sec_broadcast"/>. </t> 
+
+
 
 <t>
 In the case of IS-IS for IP/LDP FRR, this specification allows for the
@@ -1151,6 +1153,9 @@ vary based upon the MRT profile description.  Before beginning
 computation, the network graph is reduced to contain only the set of
 routers that support the specific MRT profile whose MRTs are being
 computed.</t>
+
+<t> As noted in <xref target="sec_broadcast"/>, pseudonodes MUST 
+NOT be considered for GADAG root selection.</t>
 
 <t>Analysis has shown that the centrality of a router can have a
 significant impact on the lengths of the alternate paths computed.
@@ -2291,6 +2296,104 @@ topo_order in the interval [R-small.topo_order, X.topo_order] or
 to pick an MRT-FRR alternate.</t>
 
 </section>
+
+<section anchor="sec_broadcast" title= "Broadcast interfaces">
+
+<t>When broadcast interfaces are used to connect nodes, the broadcast 
+network MUST be represented as a pseudonode, where each real node 
+connects to the pseudonode. The interface metric in the direction from 
+real node to pseudonode is the non-zero interface metric, while the 
+interface metric in the direction from the pseudonode to the real node 
+is set to zero. This is consistent with the way that broadcast 
+interfaces are represented as pseudonodes in IS-IS and OSPF.</t> 
+
+<t>Pseudonodes MUST be treated as equivalent to real nodes in the 
+network graph used in the MRT algorithm with a few exceptions detailed 
+below. </t> 
+
+<t> The pseudonodes MUST be included in the computation of the GADAG. 
+The neighbors of the pseudonode need to know the mrt_node_id of the 
+pseudonode in order to consistently order interfaces, which is needed 
+to compute the GADAG. The mrt_node_id for IS-IS is the 7 octet neighbor 
+system ID and pseudonode number in TLV #22 or TLV#222. The mrt_node_id 
+for OSPFv2 is the 4 octet interface address of the Designated Router 
+found in the Link ID field for the link type 2 (transit network) in the 
+Router-LSA. The mrt_node_id for OSPFv3 is the 4 octet interface address 
+of the Designated Router found in the Neighbor Interface ID field for 
+the link type 2 (transit network) in the Router-LSA. pseudonodes MUST 
+NOT be considered as candidates for GADAG root selection. Note that this 
+is different from the Neighbor Router ID field used for the mrt_node_id 
+for point-to-point links in OSPFv3 Router-LSAs given in <xref 
+target="mrt_node_id_and_metric"/>. </t> 
+
+<t>Pseudonodes MUST NOT be considered as candidates for selection as 
+GADAG root. This rule is intended to result in a more stable network- 
+wide selection of GADAG root by removing the possibility that the change 
+of Designated Router or Designated Intermediate System on a broadcast 
+network can result in a change of GADAG root.</t> 
+
+<t>The pseudonode does not correspond to an real node, so it is not 
+actually involved in forwarding. A real node on a broadcast network 
+cannot simply forward traffic to the broadcast network. It must specify 
+another real node on the broadcast network as the next-hop. On a network 
+graph where a broadcast network is represented by a pseudonode, this 
+means that if a real node determines that the next-hop to reach a given 
+destination is a pseudonode, it must also determine the next-next-hop 
+for that destination in the network graph, which corresponds to a real 
+node attached to the broadcast network. </t> 
+
+<t>It is interesting to note that this issue is not unique to the MRT 
+algorithm, but is also encountered in normal SPF computations for IGPs. 
+Section 16.1.1 of <xref target="RFC2327"/> describes how this is done 
+for OSPF. As OSPF runs Dijkstra's algorithm, whenever a shorter path is 
+found reach a real destination node, and the shorter path is one hop 
+from the computing routing, and that one hop is a pseudonode, then the 
+next-hop for that destination is taken from the interface IP address 
+in the Router-LSA correspond to the link to the real destination node </t> 
+
+<t> For IS-IS, in the example pseudo-code implementation of Dijkstra's 
+algorithm in Annex C of <xref target="ISO10589-Second-Edition"/> 
+whenever the algorithm encounters an adjacency from a real node to a 
+pseudonode, it gets converted to a set of adjacencies from the real 
+node to the neighbors of the pseudonode. In this way, the computed 
+next-hops point all the way to the real node, and not the 
+pseudonode.</t> 
+
+<t> We could avoid the problem of determining next-hops across 
+pseudonodes in MRT by converting the pseudonode representation of 
+broadcast networks to a full mesh of links between real nodes on the 
+same network. However, if we make that conversion before computing the 
+GADAG, we lose information about which links actually correspond to a 
+single physical interface into the broadcast network. This could result 
+computing red and blue next-hops that use the same broadcast interface, 
+in which case neither the red nor the blue next-hop would be usable as 
+an alternate on failure of the broadcast interface. </t> 
+
+<t> Instead, we take the following approach, which maintains the property 
+that either the red and blue next-hop will avoid the broadcast network, 
+if topologically allowed. We run the MRT algorithm treating the 
+pseudonodes as equivalent to real nodes in the network graph, with the 
+exceptions noted above. In addition to running the MRT algorithm from 
+the point of view of itself, a computing router connected 
+to a pseudonode MUST also run the MRT algorithm from the point of view 
+of each of its pseudonode neighbors. For example, if a computing router 
+S determines that its MRT red next-hop to reach a destination D is a 
+pseudonode P, S looks at its MRT algorithm computation from P's point of 
+view to determine P's red next-hop to reach D, say interface 1 on node 
+X. S now knows that its real red next-hop to reach D is interface 1 on 
+node X on the broadcast network represented by P, and can install the 
+corresponding entry in its FIB.</t> 
+
+<t>We have used a pseudonode to represent the broadcast network and the 
+links to other real nodes on that network. And we have used the 
+node-protecting property of MRT to provide protection against failure of 
+the broadcast network. It can be shown that the red and blue MRT trees 
+produced in this manner only guarantee protection against failure of the 
+broadcast network. They do not necessarily provide protection against 
+failure of one of the real nodes connected to the broadcast network.</t> 
+
+</section>
+
 
 <section title="Python Implementation of MRT Lowpoint Algorithm" >
 <t>Below is Python code implementing the MRT Lowpoint algorithm 
@@ -3796,16 +3899,6 @@ across more topologies or is sensitive to choice of GADAG root.
 
 </section>
 
-<!-- Alia 21-Oct-2011: I want to add the criteria for comparisons and
-comparing the length of the alternates found with those by doing
-not-via F to the next-next-hop as well as by doing a not-via F to the
-destination.
-
-In draft, best to describe this comparison as on-going work; I'm
-hopeful of results by Taipei, but we'll see...
-
--->
-
 </section>
 
 <section title="Implementation Status">
@@ -3821,9 +3914,9 @@ details on implementation status.</t>
 <t><list style="hanging">
 
 <t hangText="Broadcast Interfaces: ">The algorithm assumes that
-broadcast interfaces are already represented as pseudo-nodes in the
+broadcast interfaces are already represented as pseudonodes in the
 network graph.  Given maximal redundancy, one of the MRT will try to
-avoid both the pseudo-node and the next hop.  The exact rules need to
+avoid both the pseudonode and the next hop.  The exact rules need to
 be fully specified.</t>
 </list>
 </t>
@@ -3869,6 +3962,7 @@ be fully specified.</t>
     </references>
 
     <references title="Informative References">
+	&RFC2328;
     &RFC3137;
     &RFC5120;
     &RFC5286;
@@ -3944,6 +4038,23 @@ be fully specified.</t>
         <format type='PDF' target="http://opti.tmit.bme.hu/~enyedi/ipfrr/distMaxRedTree.pdf"/>
       </reference>
 
+      
+      <reference anchor="ISO10589-Second-Edition">
+		<front>
+			<title> Intermediate system to Intermediate system intra-domain
+              routeing information exchange protocol for use in
+              conjunction with the protocol for providing the
+              connectionless-mode Network Service (ISO 8473)</title>
+			  <author>
+              <organization>
+			  International Organization for Standardization
+			  </organization>
+			  </author>
+			  <date month="Nov." year="2002" />
+		</front>
+		<seriesInfo name= "ISO/IEC" value="10589:2002, Second Edition" />
+	  </reference> 
+			  
     </references>
 
 
