@@ -1524,7 +1524,7 @@ full algorithm is given in <xref
 target="sec_compute_mrt_next-hops_alg"/>.</t>
 
 <section anchor="sec_next_hops_ordered" title="MRT next-hops to all
-nodes partially ordered with respect to the computing node" >
+nodes ordered with respect to the computing node" >
 
 <t>To find two node-disjoint paths from the computing router X to any
 node Y, depends upon whether Y &gt;&gt; X or Y &lt;&lt; X.  As shown
@@ -1572,7 +1572,7 @@ MRT-Red path: X->Cloud 2->Y
 </section>
 
 <section anchor="sec_next_hops_unordered"
-title="MRT next-hops to all nodes not partially ordered with
+title="MRT next-hops to all nodes not ordered with
 respect to the computing node" > 
 
 <t>When X and Y are not ordered, the first path should increase until
@@ -1673,11 +1673,11 @@ complete specific path taken but just the appropriate next-hops to
 use.  The identities of G and H are not determined by the computing
 node X.</t>
 
-<t>The final case to considered is when the root R computes its own
-next-hops.  Since the root R is &lt;&lt; all other nodes, running an
+<t>The final case to considered is when the GADAG root R computes its own
+next-hops.  Since the GADAG root R is &lt;&lt; all other nodes, running an
 increasing-SPF rooted at R will reach all other nodes; the MRT-Blue
 next-hops are those found with this increasing-SPF.  Similarly, since
-the root R is &gt;&gt; all other nodes, running a decreasing-SPF
+the GADAG root R is &gt;&gt; all other nodes, running a decreasing-SPF
 rooted at R will reach all other nodes; the MRT-Red next-hops are
 those found with this decreasing-SPF.</t>
 
@@ -3907,19 +3907,6 @@ across more topologies or is sensitive to choice of GADAG root.
 </t>
 <t>Please see <xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/> for 
 details on implementation status.</t>
-</section>
-
-<section title="Algorithm Work to Be Done">
-
-<t><list style="hanging">
-
-<t hangText="Broadcast Interfaces: ">The algorithm assumes that
-broadcast interfaces are already represented as pseudonodes in the
-network graph.  Given maximal redundancy, one of the MRT will try to
-avoid both the pseudonode and the next hop.  The exact rules need to
-be fully specified.</t>
-</list>
-</t>
 </section>
 
 <section anchor="Acknowledgements" title="Acknowledgements">
