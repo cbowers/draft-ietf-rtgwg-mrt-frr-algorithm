@@ -2332,6 +2332,8 @@ wide selection of GADAG root by removing the possibility that the change
 of Designated Router or Designated Intermediate System on a broadcast 
 network can result in a change of GADAG root.</t> 
 
+
+<section anchor="sec_broadcast_next_hop" title= "Computing MRT next-hops on broadcast networks">
 <t>The pseudonode does not correspond to an real node, so it is not 
 actually involved in forwarding. A real node on a broadcast network 
 cannot simply forward traffic to the broadcast network. It must specify 
@@ -2383,14 +2385,53 @@ view to determine P's red next-hop to reach D, say interface 1 on node
 X. S now knows that its real red next-hop to reach D is interface 1 on 
 node X on the broadcast network represented by P, and can install the 
 corresponding entry in its FIB.</t> 
+</section>
 
-<t>We have used a pseudonode to represent the broadcast network and the 
-links to other real nodes on that network. And we have used the 
-node-protecting property of MRT to provide protection against failure of 
-the broadcast network. It can be shown that the red and blue MRT trees 
-produced in this manner only guarantee protection against failure of the 
-broadcast network. They do not necessarily provide protection against 
-failure of one of the real nodes connected to the broadcast network.</t> 
+<section anchor="sec_broadcast_alternate" 
+title= "Using MRT next-hops as alternates in the event of failures on broadcast networks">
+
+<t>In the previous section, we specified how to compute MRT next-hops 
+when broadcast networks are involved. In this section, we discuss how a 
+PLR can use those MRT next-hops in the event of failures involving 
+broadcast networks. </t> 
+
+<t> A PLR attached to a broadcast network running only OSPF or IS-IS 
+with large Hello intervals has limited ability to quickly detect 
+failures on a broadcast network. The only failure mode that can be 
+quickly detected is the failure of the physical interface connecting the 
+PLR to the broadcast network. For the failure of the interface 
+connecting the PLR to the broadcast network, the alternate that avoids 
+the broadcast network can be computed by using the broadcast network 
+pseudonode as F, the primary next-hop node, in Select_Alternates(). This 
+will choose an alternate path that avoids the broadcast network. 
+However, the alternate path will not necessarily avoid all of the real 
+nodes connected to the broadcast network. This is because we have used 
+the pseudonode to represent the broadcast network. And we have
+enforced the node-protecting property of MRT on the pseudonode to 
+provide protection against failure of the broadcast network, not the real
+next-hop nodes on the broadcast network.  This is the best that we
+can hope to do if failure of the broadcast interface is the only failure 
+mode that the PLR can respond to.
+</t> 
+
+<t>We can improve on this if the PLR also has the ability to quickly 
+detect a lack of connectivity across the broadcast network to a given 
+IP-layer node. This can be accomplished by running BFD between all pairs 
+of IGP neighbors on the broadcast network. Note that in the case of 
+OSPF, this would require establishing BFD sessions between all pairs of 
+neighbors in the 2-WAY state. When the PLR can quickly detect the 
+failure of a particular next-hop across a broadcast network, then the 
+PLR can be more selective in its choice of alternates. For example, when 
+the PLR observes that connectivity to an IP-layer node on a broadcast 
+network has failed, the PLR may choose to still use the broadcast 
+network to reach other IP-layer nodes which are still reachable. Or if 
+the PLR observes that connectivity has failed to several IP-layer nodes 
+on the same broadcast network, it may choose to treat the entire 
+broadcast network as failed. The choice of MRT alternates by a PLR for a 
+particular set of failure conditions is a local decision, since it does 
+not require coordination with other nodes. </t> 
+
+</section>
 
 </section>
 
