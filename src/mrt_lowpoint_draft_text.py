@@ -37,30 +37,113 @@
 # of the GADAG, the blue and red MRTs for all destinations, and the 
 # MRT alternates for all failures. 
 
+import random 
+import os.path 
+import re # regular expression support
 import heapq
 
 # simple Class definitions allow structure-like dot notation for 
 # variables and a convenient place to initialize those variables.
 class Topology:
-    pass
-
+    def __init__(self):
+        self.gadag_root = None
+        self.node_list = []
+        self.node_dict = {}
+        self.test_gr = None
+        self.island_node_list_for_test_gr = []
+        self.init_new_computing_router()
+    def init_new_computing_router(self):
+        self.island_node_list = []
+        self.named_proxy_dict = {}
+        
 class Node:
-    pass
-
+    def __init__(self):
+        self.node_id = None
+        self.intf_list = []
+        self.profile_id_list = [0]
+        self.GR_sel_priority = 128
+        self.blue_next_hops_dict = {}
+        self.red_next_hops_dict = {}
+        self.blue_to_green_nh_dict = {}
+        self.red_to_green_nh_dict = {}
+        self.prefix_cost_dict = {}
+        self.pnh_dict = {}
+        self.alt_dict = {}
+        self.init_new_computing_router()
+    def init_new_computing_router(self):        
+        self.island_intf_list = []
+        self.IN_MRT_ISLAND = False
+        self.IN_GADAG = False
+        self.dfs_number = None
+        self.dfs_parent = None
+        self.dfs_parent_intf = None
+        self.dfs_child_list = []
+        self.lowpoint_number = None
+        self.lowpoint_parent = None
+        self.lowpoint_parent_intf = None
+        self.localroot = None
+        self.block_id = None
+        self.IS_CUT_VERTEX = False
+        self.blue_next_hops = []
+        self.red_next_hops = []
+        self.primary_next_hops = []
+        self.alt_list = []
+        
 class Interface:
-    pass
+    def __init__(self):
+        self.metric = None
+        self.area = None
+        self.MRT_INELIGIBLE = False
+        self.IGP_EXCLUDED = False
+        self.init_new_computing_router()
+    def init_new_computing_router(self):
+        self.UNDIRECTED = True
+        self.INCOMING = False
+        self.OUTGOING = False
+        self.INCOMING_STORED = False
+        self.OUTGOING_STORED = False
+        self.IN_MRT_ISLAND = False
+        self.PROCESSED = False
 
 class Bundle:
-    pass
+    def __init__(self):
+        self.UNDIRECTED = True
+        self.OUTGOING = False
+        self.INCOMING = False
 
 class Alternate:
     def __init__(self):
         self.failed_intf = None
+        self.red_or_blue = None
         self.nh_list = []
         self.fec = 'NO_ALTERNATE'
         self.prot = 'NO_PROTECTION'
         self.info = 'NONE'
 
+class Proxy_Node_Attachment_Router:
+    def __init__(self):
+        self.prefix = None
+        self.node = None
+        self.named_proxy_cost = None
+        self.min_lfin = None
+        self.nh_intf_list = []
+        
+class Named_Proxy_Node:
+    def __init__(self):
+        self.node_id = None  #this is the prefix_id
+        self.node_prefix_cost_list = []
+        self.lfin_list = []
+        self.pnar1 = None
+        self.pnar2 = None
+        self.pnar_X = None
+        self.pnar_Y = None
+        self.blue_next_hops = []
+        self.red_next_hops = []          
+        self.primary_next_hops = []
+        self.blue_next_hops_dict = {}
+        self.red_next_hops_dict = {}
+        self.pnh_dict = {}
+        self.alt_dict = {}
 
 def Interface_Compare(intf_a, intf_b):
     if intf_a.metric < intf_b.metric:
@@ -77,63 +160,12 @@ def Sort_Interfaces(topo):
     for node in topo.island_node_list:
         node.island_intf_list.sort(Interface_Compare)
 
-def Initialize_Node(node):
-    node.intf_list = []
-    node.island_intf_list = []
-    node.profile_id_list = [0]
-    node.GR_sel_priority = 128
-    node.IN_MRT_ISLAND = False
-    node.IN_GADAG = False
-    node.dfs_number = None
-    node.dfs_parent = None
-    node.dfs_parent_intf = None
-    node.dfs_child_list = []
-    node.lowpoint_number = None
-    node.lowpoint_parent = None
-    node.lowpoint_parent_intf = None
-    node.localroot = None
-    node.block_id = None
-    node.IS_CUT_VERTEX = False
-    node.blue_next_hops_dict = {}
-    node.red_next_hops_dict = {}
-    node.pnh_dict = {}
-    node.alt_dict = {}
-    
-def Initialize_Intf(intf):
-    intf.metric = None
-    intf.area = None
-    intf.MRT_INELIGIBLE = False
-    intf.IGP_EXCLUDED = False
-    intf.UNDIRECTED = True
-    intf.INCOMING = False
-    intf.OUTGOING = False
-    intf.INCOMING_STORED = False
-    intf.OUTGOING_STORED = False
-    intf.PROCESSED = False
-    intf.IN_MRT_ISLAND = False
-
 def Reset_Computed_Node_and_Intf_Values(topo):
+    topo.init_new_computing_router()
     for node in topo.node_list:
-        node.IN_MRT_ISLAND = False
-        node.IN_GADAG = False
-        node.dfs_number = None
-        node.dfs_parent = None
-        node.dfs_parent_intf = None
-        node.dfs_child_list = []
-        node.lowpoint_number = None
-        node.lowpoint_parent = None
-        node.lowpoint_parent_intf = None
-        node.localroot = None
-        node.block_id = None
-        node.IS_CUT_VERTEX = False
+        node.init_new_computing_router()
         for intf in node.intf_list:
-            intf.UNDIRECTED = True
-            intf.INCOMING = False
-            intf.OUTGOING = False
-            intf.INCOMING_STORED = False
-            intf.OUTGOING_STORED = False
-            intf.IN_MRT_ISLAND = False
-
+            intf.init_new_computing_router()
 
 # This function takes a file with links represented by 2-digit 
 # numbers in the format:
@@ -149,15 +181,10 @@ def Reset_Computed_Node_and_Intf_Values(topo):
 # creates a link from node 02 to 07 with metrics 10 and 15.
 def Create_Topology_From_File(filename):
     topo = Topology()
-    topo.gadag_root = None
-    topo.node_list = []
-    topo.node_dict = {}
-    topo.island_node_list = []
-    topo.prefix_list = [] # possibly no longer needed
     node_id_set= set()
     cols_list = []
     # on first pass just create nodes
-    with open(filename) as topo_file:
+    with open(filename + '.csv') as topo_file:
         for line in topo_file:
             line = line.rstrip('\r\n')
             cols=line.split(',')
@@ -173,7 +200,6 @@ def Create_Topology_From_File(filename):
     for node_id in node_id_set:
         node = Node()
         node.node_id = node_id
-        Initialize_Node(node)
         topo.node_list.append(node)
         topo.node_dict[node_id] = node
     # on second pass create interfaces
@@ -187,11 +213,9 @@ def Create_Topology_From_File(filename):
         nodea = topo.node_dict[nodea_node_id]
         nodeb = topo.node_dict[nodeb_node_id]
         nodea_intf = Interface()
-        Initialize_Intf(nodea_intf)
         nodea_intf.metric = metric
         nodea_intf.area = 0
         nodeb_intf = Interface()
-        Initialize_Intf(nodeb_intf)
         nodeb_intf.metric = reverse_metric
         nodeb_intf.area = 0
         nodea_intf.remote_intf = nodeb_intf
@@ -221,12 +245,18 @@ def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
                     intf.IN_MRT_ISLAND = True
                     if (not intf.remote_node.IN_MRT_ISLAND):
                         intf.remote_node.IN_MRT_ISLAND = True
-                        explore_list.append(intf.remote_node)            
+                        explore_list.append(intf.remote_node)
+
+def Compute_Island_Node_List_For_Test_GR(topo, test_gr):
+    Reset_Computed_Node_and_Intf_Values(topo)
+    topo.test_gr = topo.node_dict[test_gr]
+    MRT_Island_Identification(topo, topo.test_gr, 0, 0)
+    for node in topo.node_list:
+        if node.IN_MRT_ISLAND:
+            topo.island_node_list_for_test_gr.append(node)
 
 def Set_Island_Intf_and_Node_Lists(topo):
-    topo.island_node_list = []
     for node in topo.node_list:
-        node.island_intf_list = []
         if node.IN_MRT_ISLAND:
             topo.island_node_list.append(node)
             for intf in node.intf_list:
@@ -289,8 +319,6 @@ def Construct_Ear(x, stack, intf, ear_type):
     ear_list = []
     cur_intf = intf
     not_done = True
-    
-    
     while not_done:
         cur_intf.UNDIRECTED = False
         cur_intf.OUTGOING = True
@@ -306,7 +334,6 @@ def Construct_Ear(x, stack, intf, ear_type):
                 cur_intf = cur_intf.remote_node.dfs_parent_intf
         else:
             not_done = False
-            
     
     if ear_type == 'CHILD' and cur_intf.remote_node is x:
         # x is a cut-vertex and the local root for the block 
@@ -328,7 +355,6 @@ def Construct_GADAG_via_Lowpoint(topo):
     gadag_root.localroot = None
     stack = []
     stack.append(gadag_root)
-    
     while stack != []:
         x = stack.pop()
         for intf in x.island_intf_list:
@@ -357,9 +383,6 @@ def Add_Undirected_Block_Root_Links(topo):
                     continue
                 bundle_list = []
                 bundle = Bundle()
-                bundle.UNDIRECTED = True
-                bundle.OUTGOING = False
-                bundle.INCOMING = False
                 for intf2 in node.island_intf_list:
                     if intf2.remote_node is intf.remote_node:
                         bundle_list.append(intf2)
@@ -510,7 +533,7 @@ def Store_Results(y, direction):
     if direction == 'COLLAPSED_SPF':
         y.collapsed_metric = y.spf_metric
         Copy_List_Items(y.collapsed_next_hops, y.next_hops)
-        
+                    
 # Note that the Python heapq fucntion allows for duplicate items, 
 # so we use the 'spf_visited' property to only consider a node 
 # as min_node the first time it gets removed from the heap.
@@ -645,7 +668,6 @@ def Compute_MRT_NH_For_One_Src_To_Island_Dests(topo,x):
     for y in topo.island_node_list:
         if (y is not topo.gadag_root and y is not x ):
             Set_Edge(y)
-    
                        
 def Store_MRT_Nexthops_For_One_Src_To_Island_Dests(topo,x):
     for y in topo.island_node_list:
@@ -669,11 +691,33 @@ def Store_Primary_NHs_For_One_Source_To_Nodes(topo,x):
     for y in topo.node_list:
         x.pnh_dict[y.node_id] = []
         Copy_List_Items(x.pnh_dict[y.node_id], y.primary_next_hops)
-
+       
+def Store_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,x):
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        x.blue_next_hops_dict[P.node_id] = []
+        x.red_next_hops_dict[P.node_id] = []
+        Copy_List_Items(x.blue_next_hops_dict[P.node_id],
+                        P.blue_next_hops)
+        Copy_List_Items(x.red_next_hops_dict[P.node_id],
+                        P.red_next_hops)
+        
+def Store_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,x):
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        x.alt_dict[P.node_id] = []
+        Copy_List_Items(x.alt_dict[P.node_id],
+                        P.alt_list)               
+       
+def Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,x):
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        x.pnh_dict[P.node_id] = []
+        Copy_List_Items(x.pnh_dict[P.node_id],
+                        P.primary_next_hops)
 
 def Select_Alternates_Internal(D, F, primary_intf,
                                D_lower, D_higher, D_topo_order):
-
     if D_higher and D_lower:
         if F.HIGHER and F.LOWER:
             if F.topo_order > D_topo_order:
@@ -712,7 +756,9 @@ def Select_Alternates_Internal(D, F, primary_intf,
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
-                assert(False) 
+                # This can happens when the primary next hop goes 
+                # to a node in a different block and D is unordered wrt S.  
+                return 'USE_RED_OR_BLUE'
             if primary_intf.OUTGOING:
                 return 'USE_BLUE'
             if primary_intf.INCOMING:
@@ -733,45 +779,34 @@ def Select_Alternates(D, F, primary_intf):
     return Select_Alternates_Internal(D, F, primary_intf,
                                       D_lower, D_higher, D_topo_order)
 
-
 def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
     Normal_SPF(topo, x)
     for D in topo.island_node_list:
         D.alt_list = []
         if D is x:
             continue
-
         for failed_intf in D.primary_next_hops:  
             alt = Alternate()
             alt.failed_intf = failed_intf
-            #If there are ECMP primary next-hops, use them if they
-            #don't share the same remote node as the failed interface
-            cand_alt_list = []
-            for primary_intf in D.primary_next_hops:
-                if (primary_intf.remote_node is 
-                    not failed_intf.remote_node):
-                    cand_alt_list.append(primary_intf)
-            if cand_alt_list != []: #Good ECMP exists
-                Copy_List_Items(alt.nh_list, cand_alt_list)
-                alt.fec = 'GREEN'
-                alt.prot = 'ECMP_TO_DIFFERENT_REMOTE_NODE'      
-            elif failed_intf in x.island_intf_list:
+            cand_alt_list = []                
+                
+            if failed_intf in x.island_intf_list:
                 alt.info = Select_Alternates(D,
                     failed_intf.remote_node, failed_intf)
             else:
                 #The primary next-hop is not in the MRT Island. 
                 #Either red or blue will avoid the primary next-hop,
                 #because the primary next-hop is not even in the
-                #GADAG.  For simplicity, we choose blue here.
-                alt.info = 'PRIM_NH_NOT_IN_ISLAND'
+                #GADAG.
+                alt.info = 'USE_RED_OR_BLUE'
+                
+            if (alt.info == 'USE_RED_OR_BLUE'):
+                alt.red_or_blue = random.choice(['USE_RED','USE_BLUE'])
+            if (alt.info == 'USE_BLUE' or alt.red_or_blue == 'USE_BLUE'):
                 Copy_List_Items(alt.nh_list, D.blue_next_hops)
                 alt.fec = 'BLUE'
                 alt.prot = 'NODE_PROTECTION'
-            if (alt.info == 'USE_BLUE'):                    
-                Copy_List_Items(alt.nh_list, D.blue_next_hops)
-                alt.fec = 'BLUE'
-                alt.prot = 'NODE_PROTECTION'
-            if (alt.info == 'USE_RED'):
+            if (alt.info == 'USE_RED' or alt.red_or_blue == 'USE_RED'):
                 Copy_List_Items(alt.nh_list, D.red_next_hops)
                 alt.fec = 'RED'
                 alt.prot = 'NODE_PROTECTION'
@@ -906,7 +941,7 @@ def Raise_GADAG_Root_Selection_Priority(topo,node_id):
 def Lower_GADAG_Root_Selection_Priority(topo,node_id):
     node = topo.node_dict[node_id]
     node.GR_sel_priority = 128
-
+ 
 def GADAG_Root_Compare(node_a, node_b):
     if (node_a.GR_sel_priority > node_b.GR_sel_priority):
         return 1
@@ -925,9 +960,889 @@ def Set_GADAG_Root(topo,computing_router):
     gadag_root_list.sort(GADAG_Root_Compare)
     topo.gadag_root = gadag_root_list.pop()
 
+def Add_Prefix_Advertisements_From_File(topo, filename):
+    prefix_filename = filename + '.prefix'
+    p = re.compile('^\d\d\d\d,\d*,\d*')
+    cols_list = []
+    if not os.path.exists(prefix_filename):
+        return
+    with open(prefix_filename) as prefix_file:
+        for line in prefix_file:
+            m = p.match(line)
+            if m == None:
+                print('skipping the following line of prefix file')
+                print(line)
+                continue
+            line = line.rstrip('\r\n')
+            cols=line.split(',')
+            cols_list.append(cols)
+            prefix_id = int(cols[0])
+            if prefix_id < 2000 or prefix_id >2999:
+                print('skipping the following line of prefix file')
+                print('prefix id should be between 2000 and 2999')
+                print(line)
+                continue
+            prefix_node_id = int(cols[1])
+            prefix_cost = int(cols[2])
+            advertising_node = topo.node_dict[prefix_node_id]
+            advertising_node.prefix_cost_dict[prefix_id] = prefix_cost
+        
+def Add_Prefixes_for_Non_Island_Nodes(topo):
+    for node in topo.node_list:
+        if node.IN_MRT_ISLAND:
+            continue
+        prefix_id = node.node_id + 1000
+        node.prefix_cost_dict[prefix_id] = 0
 
-def Run_MRT_for_One_Source(topo, src):
-    Reset_Computed_Node_and_Intf_Values(topo)
+def Add_Profile_IDs_from_File(topo, filename):
+    profile_filename = filename + '.profile'
+    for node in topo.node_list:
+        node.profile_id_list = []
+    p = re.compile('^\d*,\d*')
+    cols_list = []
+    if os.path.exists(profile_filename):
+        with open(profile_filename) as profile_file:
+            for line in profile_file:
+                m = p.match(line)
+                if m == None:
+                    print('skipping the following line of profile file')
+                    print(line)
+                    continue
+                line = line.rstrip('\r\n')
+                cols=line.split(',')
+                cols_list.append(cols)
+                node_id = int(cols[0])
+                profile_id = int(cols[1])
+                this_node = topo.node_dict[node_id]
+                this_node.profile_id_list.append(profile_id)
+    else:
+        for node in topo.node_list:
+            node.profile_id_list = [0]
+
+def Island_Marking_SPF(topo,spf_root):
+    spf_root.isl_marking_spf_dict = {}
+    for y in topo.node_list:
+        y.spf_metric = 2147483647 # 2^31-1 as max metric
+        y.PATH_HITS_ISLAND = False
+        y.next_hops = []
+        y.spf_visited = False
+    spf_root.spf_metric = 0
+    spf_heap = []
+    heapq.heappush(spf_heap,
+                   (spf_root.spf_metric,spf_root.node_id,spf_root) )        
+    while spf_heap != []:
+        #extract third element of tuple popped from heap
+        min_node = heapq.heappop(spf_heap)[2] 
+        if min_node.spf_visited:
+            continue
+        min_node.spf_visited = True
+        spf_root.isl_marking_spf_dict[min_node.node_id] = \
+            (min_node.spf_metric, min_node.PATH_HITS_ISLAND)
+        for intf in min_node.intf_list:
+            path_metric = min_node.spf_metric + intf.metric
+            if path_metric < intf.remote_node.spf_metric:
+                intf.remote_node.spf_metric = path_metric
+                if min_node is spf_root:
+                    intf.remote_node.next_hops = [intf]
+                else:
+                    Copy_List_Items(intf.remote_node.next_hops,
+                                    min_node.next_hops)
+                if (intf.remote_node.IN_MRT_ISLAND):
+                    intf.remote_node.PATH_HITS_ISLAND = True
+                else:
+                    intf.remote_node.PATH_HITS_ISLAND = min_node.PATH_HITS_ISLAND
+                heapq.heappush(spf_heap,
+                               ( intf.remote_node.spf_metric,
+                                 intf.remote_node.node_id,
+                                 intf.remote_node ) )
+            elif path_metric == intf.remote_node.spf_metric:
+                if min_node is spf_root:
+                    Add_Item_To_List_If_New(
+                        intf.remote_node.next_hops,intf)
+                else:
+                    for nh_intf in min_node.next_hops:
+                        Add_Item_To_List_If_New(
+                            intf.remote_node.next_hops,nh_intf)
+                if (intf.remote_node.IN_MRT_ISLAND):
+                    intf.remote_node.PATH_HITS_ISLAND = True
+                else:
+                    if (intf.remote_node.PATH_HITS_ISLAND 
+                        or min_node.PATH_HITS_ISLAND):
+                        intf.remote_node.PATH_HITS_ISLAND = True
+
+
+def Create_Basic_Named_Proxy_Nodes(topo):
+    for node in topo.node_list:
+        for prefix in node.prefix_cost_dict:
+            prefix_cost = node.prefix_cost_dict[prefix]
+            if prefix in topo.named_proxy_dict:
+                P = topo.named_proxy_dict[prefix]
+                P.node_prefix_cost_list.append((node,prefix_cost))
+            else:
+                P = Named_Proxy_Node()
+                topo.named_proxy_dict[prefix] = P
+                P.node_id = prefix
+                P.node_prefix_cost_list = [(node,prefix_cost)]         
+
+def Compute_Loop_Free_Island_Neighbors_For_Each_Prefix(topo):
+    topo.island_nbr_set = set()
+    topo.island_border_set = set()
+    for node in topo.node_list:
+        if node.IN_MRT_ISLAND:
+            continue
+        for intf in node.intf_list:
+            if intf.remote_node.IN_MRT_ISLAND:
+                topo.island_nbr_set.add(node)
+                topo.island_border_set.add(intf.remote_node)
+                
+    for island_nbr in topo.island_nbr_set:
+        Island_Marking_SPF(topo,island_nbr)
+          
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        P.lfin_list = []
+        for island_nbr in topo.island_nbr_set:
+            min_isl_nbr_to_pref_cost = 2147483647
+            for (adv_node, prefix_cost) in P.node_prefix_cost_list:
+                (adv_node_cost, path_hits_island) = \
+                    island_nbr.isl_marking_spf_dict[adv_node.node_id]
+                isl_nbr_to_pref_cost = adv_node_cost + prefix_cost
+                if isl_nbr_to_pref_cost < min_isl_nbr_to_pref_cost:
+                    min_isl_nbr_to_pref_cost = isl_nbr_to_pref_cost
+                    min_path_hits_island = path_hits_island
+                elif isl_nbr_to_pref_cost == min_isl_nbr_to_pref_cost:
+                    if min_path_hits_island or path_hits_island:
+                        min_path_hits_island = True
+            if not min_path_hits_island:
+                P.lfin_list.append( (island_nbr, 
+                                     min_isl_nbr_to_pref_cost) )
+
+def Compute_Island_Border_Router_LFIN_Pairs_For_Each_Prefix(topo):
+    for ibr in topo.island_border_set:
+        ibr.prefix_lfin_dict = {}
+        ibr.min_intf_metric_dict = {}
+        ibr.min_intf_list_dict = {}
+        ibr.min_intf_list_dict[None] = None
+        for intf in ibr.intf_list:
+            if not intf.remote_node in topo.island_nbr_set:
+                continue
+            if not intf.remote_node in ibr.min_intf_metric_dict:
+                ibr.min_intf_metric_dict[intf.remote_node] = intf.metric
+                ibr.min_intf_list_dict[intf.remote_node] = [intf]
+            else:
+                if intf.metric < ibr.min_intf_metric_dict[intf.remote_node]:
+                    ibr.min_intf_metric_dict[intf.remote_node] = intf.metric
+                    ibr.min_intf_list_dict[intf.remote_node] = [intf]
+                elif intf.metric < ibr.min_intf_metric_dict[intf.remote_node]:
+                    ibr.min_intf_list_dict[intf.remote_node].append(intf)
+    
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        for ibr in topo.island_border_set:
+            min_ibr_lfin_pref_cost = 2147483647
+            min_lfin = None
+            for (lfin, lfin_to_pref_cost) in P.lfin_list:
+                if not lfin in ibr.min_intf_metric_dict:
+                    continue
+                ibr_lfin_pref_cost = \
+                    ibr.min_intf_metric_dict[lfin] + lfin_to_pref_cost
+                if ibr_lfin_pref_cost < min_ibr_lfin_pref_cost:
+                    min_ibr_lfin_pref_cost = ibr_lfin_pref_cost
+                    min_lfin = lfin
+            ibr.prefix_lfin_dict[prefix] = (min_lfin, 
+                min_ibr_lfin_pref_cost, ibr.min_intf_list_dict[min_lfin])
+
+def Proxy_Node_Att_Router_Compare(pnar_a, pnar_b):
+    if pnar_a.named_proxy_cost < pnar_b.named_proxy_cost:
+        return -1
+    if pnar_b.named_proxy_cost < pnar_a.named_proxy_cost:
+        return 1
+    if pnar_a.node.node_id < pnar_b.node.node_id:
+        return -1
+    if pnar_b.node.node_id < pnar_a.node.node_id:
+        return 1
+    if pnar_a.min_lfin == None:
+        return -1
+    if pnar_b.min_lfin == None:
+        return 1
+
+def Choose_Proxy_Node_Attachment_Routers(topo):
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        pnar_candidate_list = []
+        for (node, prefix_cost) in P.node_prefix_cost_list:
+            if not node.IN_MRT_ISLAND:
+                continue
+            pnar = Proxy_Node_Attachment_Router()
+            pnar.prefix = prefix
+            pnar.named_proxy_cost = prefix_cost
+            pnar.node = node
+            pnar_candidate_list.append(pnar)
+        for ibr in topo.island_border_set:
+            (min_lfin, prefix_cost, min_intf_list) = \
+                ibr.prefix_lfin_dict[prefix]
+            if min_lfin == None:
+                continue
+            pnar = Proxy_Node_Attachment_Router()
+            pnar.named_proxy_cost = prefix_cost
+            pnar.node = ibr
+            pnar.min_lfin = min_lfin
+            pnar.nh_intf_list = min_intf_list
+            pnar_candidate_list.append(pnar)
+        pnar_candidate_list.sort(cmp=Proxy_Node_Att_Router_Compare)
+        #pop first element from list
+        first_pnar = pnar_candidate_list.pop(0) 
+        second_pnar = None
+        for next_pnar in pnar_candidate_list:
+            if next_pnar.node is first_pnar.node:
+                continue
+            second_pnar = next_pnar
+            break
+         
+        P.pnar1 = first_pnar
+        P.pnar2 = second_pnar
+     
+def Attach_Named_Proxy_Nodes(topo):
+    Compute_Loop_Free_Island_Neighbors_For_Each_Prefix(topo)
+    Compute_Island_Border_Router_LFIN_Pairs_For_Each_Prefix(topo)
+    Choose_Proxy_Node_Attachment_Routers(topo)
+
+def Select_Proxy_Node_NHs(P,S):
+    if P.pnar1.node.node_id < P.pnar2.node.node_id:
+        X = P.pnar1.node
+        Y = P.pnar2.node
+    else:
+        X = P.pnar2.node
+        Y = P.pnar1.node
+    P.pnar_X = X
+    P.pnar_Y = Y
+    A = X.order_proxy
+    B = Y.order_proxy
+    if (A is S.localroot 
+        and B is S.localroot):
+        #print("1.0")
+        Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+        Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+        return
+    if (A is S.localroot 
+        and B is not S.localroot):
+        #print("2.0")
+        if B.LOWER:
+            #print("2.1")
+            Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return
+        if B.HIGHER:
+            #print("2.2")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+            return
+        else:
+            #print("2.3")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return           
+    if (A is not S.localroot
+        and B is S.localroot):
+        #print("3.0")
+        if A.LOWER:
+            #print("3.1")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+            return            
+        if A.HIGHER:
+            #print("3.2")
+            Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return
+        else:
+            #print("3.3")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return        
+    if (A is not S.localroot
+        and B is not S.localroot):
+        #print("4.0")
+        if (S is A.localroot or S is B.localroot):
+            #print("4.05")
+            if A.topo_order < B.topo_order:
+                #print("4.05.1")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                return
+            else:
+                #print("4.05.2")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                return                                 
+        if A.LOWER:
+            #print("4.1")
+            if B.HIGHER:
+                #print("4.1.1")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                return                  
+            if B.LOWER:
+                #print("4.1.2")
+                if A.topo_order < B.topo_order:
+                    #print("4.1.2.1")
+                    Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                    return
+                else:
+                    #print("4.1.2.2")
+                    Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)                
+                    return                    
+            else:
+                #print("4.1.3")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
+                return
+        if A.HIGHER:
+            #print("4.2")
+            if B.HIGHER:
+                #print("4.2.1")
+                if A.topo_order < B.topo_order:
+                    #print("4.2.1.1")
+                    Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
+                    return
+                else:
+                    #print("4.2.1.2")
+                    Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops) 
+                    return                    
+            if B.LOWER:
+                #print("4.2.2")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
+                return           
+            else:
+                #print("4.2.3")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops) 
+                return 
+        else:
+            #print("4.3")
+            if B.LOWER:
+                #print("4.3.1")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops) 
+                return
+            if B.HIGHER:
+                #print("4.3.2")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                return
+            else:
+                #print("4.3.3")
+                if A.topo_order < B.topo_order:
+                    #print("4.3.3.1")
+                    Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                    return
+                else:
+                    #print("4.3.3.2")
+                    Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                    return
+    assert(False)
+    
+def Compute_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,S):
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        if P.pnar2 == None:
+            if S is P.pnar1.node:
+                # set the MRT next-hops for the PNAR to 
+                # reach the LFIN and change FEC to green
+                Copy_List_Items(P.blue_next_hops, P.pnar1.nh_intf_list)
+                S.blue_to_green_nh_dict[P.node_id] = True
+                Copy_List_Items(P.red_next_hops, P.pnar1.nh_intf_list)
+                S.red_to_green_nh_dict[P.node_id] = True
+            else:
+                # inherit MRT NHs for P from pnar1
+                Copy_List_Items(P.blue_next_hops, P.pnar1.node.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, P.pnar1.node.red_next_hops)
+        else:
+            Select_Proxy_Node_NHs(P,S)
+            # set the MRT next-hops for the PNAR to reach the LFIN 
+            # and change FEC to green rely on the red or blue 
+            # next-hops being empty to figure out which one needs 
+            # to point to the LFIN.
+            if S is P.pnar1.node:
+                this_pnar = P.pnar1
+            elif S is P.pnar2.node:
+                this_pnar = P.pnar2
+            else:
+                continue
+            if P.blue_next_hops == []:
+                Copy_List_Items(P.blue_next_hops,
+                    this_pnar.nh_intf_list)
+                S.blue_to_green_nh_dict[P.node_id] = True
+            if P.red_next_hops == []:
+                Copy_List_Items(P.red_next_hops,
+                    this_pnar.nh_intf_list)
+                S.red_to_green_nh_dict[P.node_id] = True                   
+
+# The basic idea behind Select_Alternates_Proxy_Node() is the 
+# following.  First, that remember that blue 
+# to P was created in Select_Proxy_Node_NHs(),
+# by copying red or blue to X. And red to P was
+# created by copying red or blue to Y. So in order to see if we
+# can safely use blue or red to P when F fails, we run Select_Alternates() 
+# on X and Y to see if we can safely use red or blue to X or red 
+# or blue to Y when F fails. Knowing if blue to P was copied from 
+# red or blue to X, and if red to P was copied from red or blue to Y,
+# we can figure out if which of blue or red to P is safe. For example, 
+# if we see that we can safely use red to X when F fails, and we know
+# that we created blue to P by copying red to X, then we know that 
+# we can safely use blue to P.
+#
+# Here we repeat all the cases in Select_Proxy_Node_NHs(), 
+# as opposed to storing information about where
+# blue and red to P were copied from, because there are 
+# four special cases that we need to deal with in
+# 4.1.3, 4.2.3, 4.3.1, and 4.3.2.  In case 4.3.1, for example,
+# we can run Select_Alternates for S to reach X when F fails 
+# and determine that it is safe to use the red alternate to X,
+# and we also know that blue to P was copied from red to X.
+# In spite of this, blue to P may still hit F.  This can
+# happen because the complete blue path from S to P may differ
+# from the complete red path from S to X.  To simplify, we
+# consider the path from S to A, S's order proxy to reach X. 
+# In this case, S is unordered with respect to A, so the red 
+# path to X will start at S by following the increasing NH 
+# on the GADAG from S.  However, it will stop following the
+# increasing NHs once the path reaches a node which is ordered
+# with respect to A.  Call this node M.  When the red path to A 
+# reaches M, it will follow the decreasing NHs to A.  The
+# problem is that when M is using Select_Proxy_Node_NHs() to figure
+# out the blue NH to reach P, since M is ordered wrt A (in particular M>>A), 
+# M will use a different case in Select_Proxy_Node_NHs().
+# M will use case 4.1.2, where M will choose either 
+# blue_to_X/red_to_Y, or red_to_X/blue_to_Y, depending on 
+# the topological sort order of A and B.  So we can end up with
+# M choosing blue_to_X as its blue NH to reach P.  Since M>>A,
+# this corresponds to the increaing NH on the GADAG towards 
+# the GADAG root. This is different from M's red NH to A, so
+# the blue path from S to P can diverge from the red path from S to A.
+# In general, this can result in the blue_path from S to P 
+# hitting F, even though the red path from S to A doesn't.
+# Similar situations arise in the other three cases.
+#
+# Fortunately, there appears to be a solution.  In case 4.3.1,
+# whenever Select_Alternates() returns a result for X that
+# says it safe to S use red to reach X, but this doesn't actually
+# mean it is safe for S to reach P using the blue next-hop to P, 
+# Select_Alternates() for S to reach Y always returns a result that
+# says it is safe to use the red path to Y, which is reliable. 
+# So by looking for this condition, we can avoid using the
+# unreliable result to X to reach P, and use the reliable result 
+# to Y to reach P.  A similar solution works for all four cases.
+
+def Select_Alternates_Proxy_Node(P,F,primary_intf):
+    S = primary_intf.local_node
+    X = P.pnar_X
+    Y = P.pnar_Y
+    A = X.order_proxy
+    B = Y.order_proxy
+    if F is A and F is B:
+        return 'PRIM_NH_IS_OP_FOR_BOTH_X_AND_Y'
+    if F is A:
+        return 'USE_RED'
+    if F is B:
+        return 'USE_BLUE'
+    
+    # This was added in addition to Gabor's proposal
+    # When A and B are not in the same block, then
+    # S will be the localroot for either A or B.
+    # If F is in the same block as A, then it is
+    # safe to use red to P (since red to P goes to B
+    # from S immediately into a different block from A and F.)
+    # Similar logic applies if F is in the same block as B.
+    # IF F is not in the same block as A or B, then 
+    # neither red nor blue will hit F.
+
+    if not In_Common_Block(A, B):
+        if In_Common_Block(F, A):
+            return 'USE_RED'
+        elif In_Common_Block(F, B):
+            return 'USE_BLUE'
+        else:
+            return 'USE_RED_OR_BLUE' 
+    if (not In_Common_Block(F, A)
+        and not In_Common_Block(F, A) ):
+        return 'USE_RED_OR_BLUE'
+
+    alt_to_X = Select_Alternates(X, F, primary_intf)
+    alt_to_Y = Select_Alternates(Y, F, primary_intf)
+
+    if (alt_to_X == 'USE_RED_OR_BLUE'
+        and alt_to_Y == 'USE_RED_OR_BLUE'):
+        return 'USE_RED_OR_BLUE'
+    if alt_to_X == 'USE_RED_OR_BLUE':
+        return 'USE_BLUE'
+    if alt_to_Y == 'USE_RED_OR_BLUE':
+        return 'USE_RED'
+    
+    if (A is S.localroot 
+        and B is S.localroot):
+        #print("1.0")
+        if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+            return 'USE_RED_OR_BLUE'
+        if alt_to_X == 'USE_BLUE':
+            return 'USE_BLUE'
+        if alt_to_Y == 'USE_RED':
+            return 'USE_RED'
+        assert(False)
+    if (A is S.localroot 
+        and B is not S.localroot):
+        #print("2.0")
+        if B.LOWER:
+            #print("2.1")
+            if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_BLUE':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)
+        if B.HIGHER:
+            #print("2.2")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_BLUE':
+                return 'USE_RED'
+            assert(False)
+        else:
+            #print("2.3")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'          
+            assert(False)       
+    if (A is not S.localroot
+        and B is S.localroot):
+        #print("3.0")
+        if A.LOWER:
+            #print("3.1")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_BLUE':
+                return 'USE_RED'
+            assert(False)        
+        if A.HIGHER:
+            #print("3.2")
+            if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_BLUE':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)
+        else:
+            #print("3.3")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)  
+    if (A is not S.localroot
+        and B is not S.localroot):
+        #print("4.0")
+        if (S is A.localroot or S is B.localroot):
+            #print("4.05")
+            if A.topo_order < B.topo_order:
+                #print("4.05.1")
+                if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_BLUE':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_RED':
+                    return 'USE_RED'
+                assert(False)
+            else:
+                #print("4.05.2")
+                if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_RED':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_BLUE':
+                    return 'USE_RED'
+                assert(False)   
+        if A.LOWER:
+            #print("4.1")
+            if B.HIGHER:
+                #print("4.1.1")
+                if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_RED':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_BLUE':
+                    return 'USE_RED'
+                assert(False)                 
+            if B.LOWER:
+                #print("4.1.2")
+                if A.topo_order < B.topo_order:
+                    #print("4.1.2.1")
+                    if (alt_to_X == 'USE_BLUE' 
+                        and alt_to_Y == 'USE_RED'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_BLUE':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_RED':
+                        return 'USE_RED'
+                    assert(False)
+                else:
+                    #print("4.1.2.2")
+                    if (alt_to_X == 'USE_RED' 
+                        and alt_to_Y == 'USE_BLUE'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_RED':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_BLUE':
+                        return 'USE_RED'
+                    assert(False)  
+            else:
+                #print("4.1.3")
+                if (alt_to_X == 'USE_RED' 
+                    and alt_to_Y == 'USE_RED'):
+                    # Special Case:
+                    #red to A is simple decreasing NH to A.
+                    #red to B is decreasing to GR until finding
+                    #node ordered wrt B (call it G).  
+                    #So don't use red to B to avoid G having 
+                    #a different red NH to reach P.
+                    #So use red to A, which is blue to P.   
+                    return 'USE_BLUE'              
+                if alt_to_X == 'USE_RED':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_RED':
+                    return 'USE_RED'
+                assert(False)  
+        if A.HIGHER:
+            #print("4.2")
+            if B.HIGHER:
+                #print("4.2.1")
+                if A.topo_order < B.topo_order:
+                    #print("4.2.1.1")
+                    if (alt_to_X == 'USE_BLUE' 
+                        and alt_to_Y == 'USE_RED'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_BLUE':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_RED':
+                        return 'USE_RED'
+                    assert(False)
+                else:
+                    #print("4.2.1.2")
+                    if (alt_to_X == 'USE_RED' 
+                        and alt_to_Y == 'USE_BLUE'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_RED':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_BLUE':
+                        return 'USE_RED'
+                    assert(False)
+            if B.LOWER:
+                #print("4.2.2")
+                if (alt_to_X == 'USE_BLUE' 
+                    and alt_to_Y == 'USE_RED'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_BLUE':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_RED':
+                    return 'USE_RED'
+                assert(False)      
+            else:
+                #print("4.2.3")
+                if (alt_to_X == 'USE_BLUE' 
+                    and alt_to_Y == 'USE_BLUE'):
+                    # Special Case:
+                    return 'USE_BLUE'
+                if alt_to_X == 'USE_BLUE':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_BLUE':
+                    return 'USE_RED'
+                assert(False)                      
+        else:
+            #print("4.3")
+            if B.LOWER:
+                #print("4.3.1")
+                if (alt_to_X == 'USE_RED' 
+                    and alt_to_Y == 'USE_RED'):
+                    # Special Case:
+                    # Red to B is simple decreasing NH to B, so go to B,
+                    # which is Y, which is Red to P.
+                    return 'USE_RED'
+                if alt_to_X == 'USE_RED':
+                    return 'USE_BLUE'  
+                if (alt_to_Y == 'USE_RED'):
+                    return 'USE_RED'
+                assert(False)
+            if B.HIGHER:
+                #print("4.3.2")
+                if (alt_to_X == 'USE_BLUE' 
+                    and alt_to_Y == 'USE_BLUE'):
+                    # Special Case:
+                    return 'USE_RED'
+                if alt_to_X == 'USE_BLUE':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_BLUE':
+                    return 'USE_RED'
+                assert(False)  
+            else:
+                #print("4.3.3")
+                if A.topo_order < B.topo_order:
+                    #print("4.3.3.1")
+                    if (alt_to_X == 'USE_BLUE' 
+                        and alt_to_Y == 'USE_RED'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_BLUE':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_RED':
+                        return 'USE_RED'
+                    assert(False)
+                else:
+                    #print("4.3.3.2")
+                    if (alt_to_X == 'USE_RED' 
+                        and alt_to_Y == 'USE_BLUE'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_RED':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_BLUE':
+                        return 'USE_RED'
+                    assert(False)                 
+    assert(False)
+
+def Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src):            
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        min_total_pref_cost = 2147483647
+        for (adv_node, prefix_cost) in P.node_prefix_cost_list:
+            total_pref_cost = (adv_node.primary_spf_metric 
+                               + prefix_cost)
+            if total_pref_cost < min_total_pref_cost:
+                min_total_pref_cost = total_pref_cost
+                Copy_List_Items(P.primary_next_hops,
+                                adv_node.primary_next_hops)
+            elif total_pref_cost == min_total_pref_cost:
+                for nh_intf in adv_node.primary_next_hops:
+                    Add_Item_To_List_If_New(P.primary_next_hops,
+                                            nh_intf)
+
+def Select_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src):
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        P.alt_list = []
+        for failed_intf in P.primary_next_hops:
+            alt = Alternate()
+            alt.failed_intf = failed_intf
+            if failed_intf not in src.island_intf_list:
+                alt.info = 'PRIM_NH_FOR_PROXY_NODE_NOT_IN_ISLAND'
+            elif P.pnar1 is None:
+                alt.info = 'NO_PNARs_EXIST_FOR_THIS_PREFIX'
+            elif src is P.pnar1.node:
+                alt.info = 'SRC_IS_PNAR'
+                print('src_is_pnar1')
+            elif P.pnar2 is not None and src is P.pnar2.node:
+                alt.info = 'SRC_IS_PNAR'
+            elif P.pnar2 is None:
+                #inherit alternates from the only pnar.
+                alt.info = Select_Alternates(P.pnar1.node, 
+                            failed_intf.remote_node, failed_intf)
+            elif failed_intf in src.island_intf_list:
+                alt.info = Select_Alternates_Proxy_Node(P,
+                            failed_intf.remote_node, failed_intf)
+        
+            if alt.info == 'USE_RED_OR_BLUE':
+                alt.red_or_blue = \
+                    random.choice(['USE_RED','USE_BLUE'])
+            if (alt.info == 'USE_BLUE' 
+                or alt.red_or_blue == 'USE_BLUE'):
+                Copy_List_Items(alt.nh_list, P.blue_next_hops)
+                alt.fec = 'BLUE'
+                alt.prot = 'NODE_PROTECTION'
+            elif (alt.info == 'USE_RED' 
+                  or alt.red_or_blue == 'USE_RED'):
+                Copy_List_Items(alt.nh_list, P.red_next_hops)
+                alt.fec = 'RED'
+                alt.prot = 'NODE_PROTECTION'
+            elif (alt.info == 'PRIM_NH_IS_D_OR_OP_FOR_D' 
+                or alt.info == 'PRIM_NH_IS_OP_FOR_BOTH_X_AND_Y'):
+                if failed_intf.OUTGOING and failed_intf.INCOMING:
+                    # cut-link: if there are parallel cut links, use
+                    # the link(s) with lowest metric that are not 
+                    # primary intf or None
+                    cand_alt_list = [None]
+                    min_metric = 2147483647
+                    for intf in src.island_intf_list:
+                        if ( intf is not failed_intf and
+                             (intf.remote_node is 
+                             failed_intf.remote_node)):
+                            if intf.metric < min_metric:
+                                cand_alt_list = [intf]
+                                min_metric = intf.metric
+                            elif intf.metric == min_metric:
+                                cand_alt_list.append(intf)
+                    if cand_alt_list != [None]:
+                        alt.fec = 'GREEN'
+                        alt.prot = 'PARALLEL_CUTLINK'
+                    else:
+                        alt.fec = 'NO_ALTERNATE'
+                        alt.prot = 'NO_PROTECTION'
+                    Copy_List_Items(alt.nh_list, cand_alt_list)
+                else:
+                    # set Z as the node to inherit blue next-hops from
+                    if alt.info == 'PRIM_NH_IS_D_OR_OP_FOR_D':
+                        Z = P.pnar1.node
+                    else:
+                        Z = P
+                    if failed_intf in Z.red_next_hops:
+                        Copy_List_Items(alt.nh_list, Z.blue_next_hops)
+                        alt.fec = 'BLUE'
+                        alt.prot = 'LINK_PROTECTION'
+                    else:
+                        assert(failed_intf in Z.blue_next_hops)
+                        Copy_List_Items(alt.nh_list, Z.red_next_hops)
+                        alt.fec = 'RED'
+                        alt.prot = 'LINK_PROTECTION'
+
+            elif alt.info == 'PRIM_NH_FOR_PROXY_NODE_NOT_IN_ISLAND':
+                if (P.pnar2 == None and src is P.pnar1.node):
+                    #MRT Island is singly connected to non-island dest
+                    alt.fec = 'NO_ALTERNATE'
+                    alt.prot = 'NO_PROTECTION'
+                elif P.node_id in src.blue_to_green_nh_dict:
+                    # blue to P goes to failed LFIN so use red to P
+                    Copy_List_Items(alt.nh_list, P.red_next_hops)
+                    alt.fec = 'RED'
+                    alt.prot = 'LINK_PROTECTION'
+                elif P.node_id in src.red_to_green_nh_dict:
+                    # red to P goes to failed LFIN so use blue to P
+                    Copy_List_Items(alt.nh_list, P.blue_next_hops)
+                    alt.fec = 'BLUE'
+                    alt.prot = 'LINK_PROTECTION'
+                else:
+                    Copy_List_Items(alt.nh_list, P.blue_next_hops)
+                    alt.fec = 'BLUE'
+                    alt.prot = 'LINK_PROTECTION'
+            elif alt.info == 'TEMP_NO_ALTERNATE':
+                alt.fec = 'NO_ALTERNATE'
+                alt.prot = 'NO_PROTECTION'
+
+            P.alt_list.append(alt)
+
+def Run_Basic_MRT_for_One_Source(topo, src):
     MRT_Island_Identification(topo, src, 0, 0)
     Set_Island_Intf_and_Node_Lists(topo)
     Set_GADAG_Root(topo,src)
@@ -941,18 +1856,50 @@ def Run_MRT_for_One_Source(topo, src):
     Store_MRT_Nexthops_For_One_Src_To_Island_Dests(topo,src)
     Select_Alts_For_One_Src_To_Island_Dests(topo,src)
     Store_Primary_and_Alts_For_One_Src_To_Island_Dests(topo,src)
+    
+def Run_Basic_MRT_for_All_Sources(topo):
+    for src in topo.node_list:
+        Reset_Computed_Node_and_Intf_Values(topo)
+        Run_Basic_MRT_for_One_Source(topo,src)
+
+def Run_MRT_for_One_Source(topo, src):
+    MRT_Island_Identification(topo, src, 0, 0)
+    Set_Island_Intf_and_Node_Lists(topo)
+    Set_GADAG_Root(topo,src)
+    Sort_Interfaces(topo)
+    Run_Lowpoint(topo)
+    Assign_Remaining_Lowpoint_Parents(topo)
+    Construct_GADAG_via_Lowpoint(topo)
+    Run_Assign_Block_ID(topo)
+    Add_Undirected_Links(topo)
+    Compute_MRT_NH_For_One_Src_To_Island_Dests(topo,src)
+    Store_MRT_Nexthops_For_One_Src_To_Island_Dests(topo,src)
+    Select_Alts_For_One_Src_To_Island_Dests(topo,src)
+    Store_Primary_and_Alts_For_One_Src_To_Island_Dests(topo,src)
+    Create_Basic_Named_Proxy_Nodes(topo) #P#
+    Attach_Named_Proxy_Nodes(topo) #P#
+    Compute_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Store_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Select_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Store_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
 
 def Run_Prim_SPF_for_One_Source(topo,src):
     Normal_SPF(topo, src)
     Store_Primary_NHs_For_One_Source_To_Nodes(topo,src)
-    
+    Create_Basic_Named_Proxy_Nodes(topo) #P#
+    Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+       
 def Run_MRT_for_All_Sources(topo):
     for src in topo.node_list:
-        if 0 in src.profile_id_list:
-            # src runs MRT if it has profile_id=0
+        Reset_Computed_Node_and_Intf_Values(topo)
+        if src in topo.island_node_list_for_test_gr:
+            # src runs MRT if it is in same MRT island as test_gr
             Run_MRT_for_One_Source(topo,src)
         else:
-            # still run SPF for nodes not running MRT
+            # src still runs SPF if not in MRT island
             Run_Prim_SPF_for_One_Source(topo,src)
             
 def Write_Output_To_Files(topo,file_prefix):
@@ -960,14 +1907,14 @@ def Write_Output_To_Files(topo,file_prefix):
     Write_Both_MRTs_For_All_Dests_To_File(topo,file_prefix)
     Write_Alternates_For_All_Dests_To_File(topo,file_prefix)
 
-def Create_Example_Topology_Input_File(filename):
+def Create_Basic_Topology_Input_File(filename):
     data = [[01,02,10],[02,03,10],[03,04,11],[04,05,10,20],[05,06,10],
             [06,07,10],[06,07,10],[06,07,15],[07,01,10],[07,51,10],
             [51,52,10],[52,53,10],[53,03,10],[01,55,10],[55,06,10],
             [04,12,10],[12,13,10],[13,14,10],[14,15,10],[15,16,10],
             [16,17,10],[17,04,10],[05,76,10],[76,77,10],[77,78,10],
             [78,79,10],[79,77,10]]
-    with open(filename, 'w') as topo_file:
+    with open(filename + '.csv', 'w') as topo_file:
         for item in data:
             if len(item) > 3:
                 line = (str(item[0])+','+str(item[1])+','+
@@ -977,17 +1924,67 @@ def Create_Example_Topology_Input_File(filename):
                         str(item[2])+'\n')
             topo_file.write(line)
 
-def Generate_Example_Topology_and_Run_MRT():
-    Create_Example_Topology_Input_File('example_topo_input_file.csv')
-    topo = Create_Topology_From_File('example_topo_input_file.csv')
-    res_file_base = 'example_topo'
-    Raise_GADAG_Root_Selection_Priority(topo,3)
+def Create_Complex_Topology_Input_File(filename):
+    data = [[01,02,10],[02,03,10],[03,04,11],[04,05,10,20],[05,06,10],
+            [06,07,10],[06,07,10],[06,07,15],[07,01,10],[07,51,10],
+            [51,52,10],[52,53,10],[53,03,10],[01,55,10],[55,06,10],
+            [04,12,10],[12,13,10],[13,14,10],[14,15,10],[15,16,10],
+            [16,17,10],[17,04,10],[05,76,10],[76,77,10],[77,78,10],
+            [78,79,10],[79,77,10]]
+    with open(filename + '.csv', 'w') as topo_file:
+        for item in data:
+            if len(item) > 3:
+                line = (str(item[0])+','+str(item[1])+','+
+                        str(item[2])+','+str(item[3])+'\n')
+            else:
+                line = (str(item[0])+','+str(item[1])+','+
+                        str(item[2])+'\n')
+            topo_file.write(line)
+            
+    data = [[01,0],[02,0],[03,0],[04,0],[05,0],
+            [06,0],[07,0],
+            [51,0],[55,0],
+            [12,0],[13,0],[14,0],[15,0],
+            [16,0],[17,0],[76,0],[77,0],
+            [78,0],[79,0]]
+    with open(filename + '.profile', 'w') as topo_file:
+        for item in data:
+            line = (str(item[0])+','+str(item[1])+'\n')
+            topo_file.write(line)
+            
+    data = [[2001,05,100],[2001,07,120],[2001,03,130],
+            [2002,13,100],[2002,15,110],
+            [2003,52,100],[2003,78,100]]
+    with open(filename + '.prefix', 'w') as topo_file:
+        for item in data:
+            line = (str(item[0])+','+str(item[1])+','+
+                    str(item[2])+'\n')
+            topo_file.write(line)         
+
+def Generate_Basic_Topology_and_Run_MRT():
+    this_gadag_root = 3
+    Create_Basic_Topology_Input_File('basic_topo_input')
+    topo = Create_Topology_From_File('basic_topo_input')
+    res_file_base = 'basic_topo'
+    Compute_Island_Node_List_For_Test_GR(topo, this_gadag_root)
+    Raise_GADAG_Root_Selection_Priority(topo,this_gadag_root)
+    Run_Basic_MRT_for_All_Sources(topo)
+    Write_Output_To_Files(topo, res_file_base)
+    
+def Generate_Complex_Topology_and_Run_MRT():
+    this_gadag_root = 3
+    Create_Complex_Topology_Input_File('complex_topo_input')
+    topo = Create_Topology_From_File('complex_topo_input')
+    Add_Profile_IDs_from_File(topo,'complex_topo_input')
+    Add_Prefix_Advertisements_From_File(topo,'complex_topo_input')
+    Compute_Island_Node_List_For_Test_GR(topo, this_gadag_root)
+    Add_Prefixes_for_Non_Island_Nodes(topo)
+    res_file_base = 'complex_topo'
+    Raise_GADAG_Root_Selection_Priority(topo,this_gadag_root)
     Run_MRT_for_All_Sources(topo)
     Write_Output_To_Files(topo, res_file_base)
 
-Generate_Example_Topology_and_Run_MRT()
+Generate_Basic_Topology_and_Run_MRT()
 
-
-
-
+Generate_Complex_Topology_and_Run_MRT()
 
