@@ -95,6 +95,7 @@ class Interface:
         self.area = None
         self.MRT_INELIGIBLE = False
         self.IGP_EXCLUDED = False
+        self.STORED_OUTGOING = False
         self.init_new_computing_router()
     def init_new_computing_router(self):
         self.UNDIRECTED = True
@@ -845,9 +846,9 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
 
 def Write_GADAG_To_File(topo, file_prefix):
     gadag_edge_list = []
-    for node in topo.island_node_list:
-        for intf in node.island_intf_list:
-            if intf.OUTGOING:
+    for node in topo.node_list:
+        for intf in node.intf_list:
+            if intf.STORED_OUTGOING:
                 local_node =  "%04d" % (intf.local_node.node_id)
                 remote_node = "%04d" % (intf.remote_node.node_id)
                 intf_data = "%03d" % (intf.link_data)
@@ -864,7 +865,7 @@ def Write_GADAG_To_File(topo, file_prefix):
 
 def Write_MRTs_For_All_Dests_To_File(topo, color, file_prefix):
     edge_list = []
-    for node in topo.island_node_list:
+    for node in topo.island_node_list_for_test_gr:
         if color == 'blue':
             node_next_hops_dict = node.blue_next_hops_dict
         elif color == 'red':
@@ -893,7 +894,7 @@ def Write_Both_MRTs_For_All_Dests_To_File(topo, file_prefix):
 
 def Write_Alternates_For_All_Dests_To_File(topo, file_prefix):
     edge_list = []
-    for x in topo.island_node_list:
+    for x in topo.island_node_list_for_test_gr:
         for dest_node_id in x.alt_dict:
             alt_list = x.alt_dict[dest_node_id]
             for alt in alt_list:
@@ -1116,6 +1117,7 @@ def Compute_Loop_Free_Island_Neighbors_For_Each_Prefix(topo):
             if not min_path_hits_island:
                 P.lfin_list.append( (island_nbr, 
                                      min_isl_nbr_to_pref_cost) )
+
 
 def Compute_Island_Border_Router_LFIN_Pairs_For_Each_Prefix(topo):
     for ibr in topo.island_border_set:
@@ -1524,7 +1526,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
             if alt_to_X == 'USE_RED':
                 return 'USE_BLUE'
             if alt_to_Y == 'USE_RED':
-                return 'USE_RED'          
+                return 'USE_RED'
             assert(False)       
     if (A is not S.localroot
         and B is S.localroot):
@@ -1753,7 +1755,6 @@ def Select_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src):
                 alt.info = 'NO_PNARs_EXIST_FOR_THIS_PREFIX'
             elif src is P.pnar1.node:
                 alt.info = 'SRC_IS_PNAR'
-                print('src_is_pnar1')
             elif P.pnar2 is not None and src is P.pnar2.node:
                 alt.info = 'SRC_IS_PNAR'
             elif P.pnar2 is None:
@@ -1856,11 +1857,19 @@ def Run_Basic_MRT_for_One_Source(topo, src):
     Store_MRT_Nexthops_For_One_Src_To_Island_Dests(topo,src)
     Select_Alts_For_One_Src_To_Island_Dests(topo,src)
     Store_Primary_and_Alts_For_One_Src_To_Island_Dests(topo,src)
+
+def Store_GADAG(topo):
+    for node in topo.node_list:
+        for intf in node.intf_list:
+            if intf.OUTGOING:
+                intf.STORED_OUTGOING = True
     
 def Run_Basic_MRT_for_All_Sources(topo):
     for src in topo.node_list:
         Reset_Computed_Node_and_Intf_Values(topo)
         Run_Basic_MRT_for_One_Source(topo,src)
+        if src is topo.gadag_root:
+            Store_GADAG(topo)
 
 def Run_MRT_for_One_Source(topo, src):
     MRT_Island_Identification(topo, src, 0, 0)
@@ -1898,6 +1907,8 @@ def Run_MRT_for_All_Sources(topo):
         if src in topo.island_node_list_for_test_gr:
             # src runs MRT if it is in same MRT island as test_gr
             Run_MRT_for_One_Source(topo,src)
+            if src is topo.gadag_root:
+                Store_GADAG(topo)
         else:
             # src still runs SPF if not in MRT island
             Run_Prim_SPF_for_One_Source(topo,src)
