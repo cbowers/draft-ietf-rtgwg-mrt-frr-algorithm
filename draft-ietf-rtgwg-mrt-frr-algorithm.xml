@@ -1810,7 +1810,7 @@ SPF_No_Traverse_Block_Root(spf_root, block_root, direction)
                    else
                      intf.remote_node.next_hops = min_node.next_hops
                    insert_or_update(spf_heap, intf.remote_node)
-                else if path_metric is intf.remote_node.spf_metric
+                else if path_metric == intf.remote_node.spf_metric
                    if min_node is spf_root
                       add_to_list(intf.remote_node.next_hops, intf)
                    else
@@ -2136,7 +2136,7 @@ first decreasing then increasing, path is selected.</t>
 
 <section anchor="sec_proxy_nodes" title="Finding FRR Next-Hops for Proxy-Nodes">
 
-<t>As discussed in Section 10.2 of <xref
+<t>As discussed in Section 11.2 of <xref
 target="I-D.ietf-rtgwg-mrt-frr-architecture"/>, it is necessary to
 find MRT-Blue and MRT-Red next-hops and MRT-FRR alternates for a named
 proxy-nodes. An example case is for a router that is not part of that
