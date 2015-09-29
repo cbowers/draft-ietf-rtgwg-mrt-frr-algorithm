@@ -38,8 +38,7 @@
 # MRT alternates for all failures. 
 
 import random 
-import os.path 
-import re # regular expression support
+import os.path
 import heapq
 
 # simple Class definitions allow structure-like dot notation for 
@@ -51,6 +50,7 @@ class Topology:
         self.node_dict = {}
         self.test_gr = None
         self.island_node_list_for_test_gr = []
+        self.stored_named_proxy_dict = {}
         self.init_new_computing_router()
     def init_new_computing_router(self):
         self.island_node_list = []
@@ -298,7 +298,6 @@ def Run_Lowpoint(topo):
     global_dfs_number = 0
     Lowpoint_Visit(topo.gadag_root, None, None)
 
-# addresses these cases.  
 max_block_id = None
 
 def Assign_Block_ID(x, cur_block_id):    
@@ -757,8 +756,9 @@ def Select_Alternates_Internal(D, F, primary_intf,
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
-                # This can happens when the primary next hop goes 
-                # to a node in a different block and D is unordered wrt S.  
+                # This can happen when the primary next hop goes
+                # to a node in a different block and D is 
+                # unordered wrt S.  
                 return 'USE_RED_OR_BLUE'
             if primary_intf.OUTGOING:
                 return 'USE_BLUE'
@@ -803,7 +803,8 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                 
             if (alt.info == 'USE_RED_OR_BLUE'):
                 alt.red_or_blue = random.choice(['USE_RED','USE_BLUE'])
-            if (alt.info == 'USE_BLUE' or alt.red_or_blue == 'USE_BLUE'):
+            if (alt.info == 'USE_BLUE'
+                or alt.red_or_blue == 'USE_BLUE'):
                 Copy_List_Items(alt.nh_list, D.blue_next_hops)
                 alt.fec = 'BLUE'
                 alt.prot = 'NODE_PROTECTION'
@@ -963,17 +964,11 @@ def Set_GADAG_Root(topo,computing_router):
 
 def Add_Prefix_Advertisements_From_File(topo, filename):
     prefix_filename = filename + '.prefix'
-    p = re.compile('^\d\d\d\d,\d*,\d*')
     cols_list = []
     if not os.path.exists(prefix_filename):
         return
     with open(prefix_filename) as prefix_file:
         for line in prefix_file:
-            m = p.match(line)
-            if m == None:
-                print('skipping the following line of prefix file')
-                print(line)
-                continue
             line = line.rstrip('\r\n')
             cols=line.split(',')
             cols_list.append(cols)
@@ -999,16 +994,10 @@ def Add_Profile_IDs_from_File(topo, filename):
     profile_filename = filename + '.profile'
     for node in topo.node_list:
         node.profile_id_list = []
-    p = re.compile('^\d*,\d*')
     cols_list = []
     if os.path.exists(profile_filename):
         with open(profile_filename) as profile_file:
             for line in profile_file:
-                m = p.match(line)
-                if m == None:
-                    print('skipping the following line of profile file')
-                    print(line)
-                    continue
                 line = line.rstrip('\r\n')
                 cols=line.split(',')
                 cols_list.append(cols)
@@ -1051,7 +1040,8 @@ def Island_Marking_SPF(topo,spf_root):
                 if (intf.remote_node.IN_MRT_ISLAND):
                     intf.remote_node.PATH_HITS_ISLAND = True
                 else:
-                    intf.remote_node.PATH_HITS_ISLAND = min_node.PATH_HITS_ISLAND
+                    intf.remote_node.PATH_HITS_ISLAND = \
+                        min_node.PATH_HITS_ISLAND
                 heapq.heappush(spf_heap,
                                ( intf.remote_node.spf_metric,
                                  intf.remote_node.node_id,
@@ -1083,7 +1073,7 @@ def Create_Basic_Named_Proxy_Nodes(topo):
                 P = Named_Proxy_Node()
                 topo.named_proxy_dict[prefix] = P
                 P.node_id = prefix
-                P.node_prefix_cost_list = [(node,prefix_cost)]         
+                P.node_prefix_cost_list = [(node,prefix_cost)]
 
 def Compute_Loop_Free_Island_Neighbors_For_Each_Prefix(topo):
     topo.island_nbr_set = set()
@@ -1129,14 +1119,19 @@ def Compute_Island_Border_Router_LFIN_Pairs_For_Each_Prefix(topo):
             if not intf.remote_node in topo.island_nbr_set:
                 continue
             if not intf.remote_node in ibr.min_intf_metric_dict:
-                ibr.min_intf_metric_dict[intf.remote_node] = intf.metric
+                ibr.min_intf_metric_dict[intf.remote_node] = \
+                    intf.metric
                 ibr.min_intf_list_dict[intf.remote_node] = [intf]
             else:
-                if intf.metric < ibr.min_intf_metric_dict[intf.remote_node]:
-                    ibr.min_intf_metric_dict[intf.remote_node] = intf.metric
+                if (intf.metric 
+                    < ibr.min_intf_metric_dict[intf.remote_node]):
+                    ibr.min_intf_metric_dict[intf.remote_node] = \
+                         intf.metric
                     ibr.min_intf_list_dict[intf.remote_node] = [intf]
-                elif intf.metric < ibr.min_intf_metric_dict[intf.remote_node]:
-                    ibr.min_intf_list_dict[intf.remote_node].append(intf)
+                elif (intf.metric 
+                      < ibr.min_intf_metric_dict[intf.remote_node]):
+                    ibr.min_intf_list_dict[intf.remote_node].\
+                        append(intf)
     
     for prefix in topo.named_proxy_dict:
         P = topo.named_proxy_dict[prefix]
@@ -1152,7 +1147,8 @@ def Compute_Island_Border_Router_LFIN_Pairs_For_Each_Prefix(topo):
                     min_ibr_lfin_pref_cost = ibr_lfin_pref_cost
                     min_lfin = lfin
             ibr.prefix_lfin_dict[prefix] = (min_lfin, 
-                min_ibr_lfin_pref_cost, ibr.min_intf_list_dict[min_lfin])
+                min_ibr_lfin_pref_cost,
+                ibr.min_intf_list_dict[min_lfin])
 
 def Proxy_Node_Att_Router_Compare(pnar_a, pnar_b):
     if pnar_a.named_proxy_cost < pnar_b.named_proxy_cost:
@@ -1294,12 +1290,12 @@ def Select_Proxy_Node_NHs(P,S):
                 else:
                     #print("4.1.2.2")
                     Copy_List_Items(P.blue_next_hops, X.red_next_hops)
-                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)                
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                     return                    
             else:
                 #print("4.1.3")
                 Copy_List_Items(P.blue_next_hops, X.red_next_hops)
-                Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)
                 return
         if A.HIGHER:
             #print("4.2")
@@ -1313,7 +1309,7 @@ def Select_Proxy_Node_NHs(P,S):
                 else:
                     #print("4.2.1.2")
                     Copy_List_Items(P.blue_next_hops, X.red_next_hops)
-                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops) 
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                     return                    
             if B.LOWER:
                 #print("4.2.2")
@@ -1358,14 +1354,18 @@ def Compute_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,S):
             if S is P.pnar1.node:
                 # set the MRT next-hops for the PNAR to 
                 # reach the LFIN and change FEC to green
-                Copy_List_Items(P.blue_next_hops, P.pnar1.nh_intf_list)
+                Copy_List_Items(P.blue_next_hops,
+                                P.pnar1.nh_intf_list)
                 S.blue_to_green_nh_dict[P.node_id] = True
-                Copy_List_Items(P.red_next_hops, P.pnar1.nh_intf_list)
+                Copy_List_Items(P.red_next_hops,
+                                P.pnar1.nh_intf_list)
                 S.red_to_green_nh_dict[P.node_id] = True
             else:
                 # inherit MRT NHs for P from pnar1
-                Copy_List_Items(P.blue_next_hops, P.pnar1.node.blue_next_hops)
-                Copy_List_Items(P.red_next_hops, P.pnar1.node.red_next_hops)
+                Copy_List_Items(P.blue_next_hops, 
+                                P.pnar1.node.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, 
+                                P.pnar1.node.red_next_hops)
         else:
             Select_Proxy_Node_NHs(P,S)
             # set the MRT next-hops for the PNAR to reach the LFIN 
@@ -1387,62 +1387,6 @@ def Compute_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,S):
                     this_pnar.nh_intf_list)
                 S.red_to_green_nh_dict[P.node_id] = True                   
 
-# The basic idea behind Select_Alternates_Proxy_Node() is the 
-# following.  First, that remember that blue 
-# to P was created in Select_Proxy_Node_NHs(),
-# by copying red or blue to X. And red to P was
-# created by copying red or blue to Y. So in order to see if we
-# can safely use blue or red to P when F fails, we run Select_Alternates() 
-# on X and Y to see if we can safely use red or blue to X or red 
-# or blue to Y when F fails. Knowing if blue to P was copied from 
-# red or blue to X, and if red to P was copied from red or blue to Y,
-# we can figure out if which of blue or red to P is safe. For example, 
-# if we see that we can safely use red to X when F fails, and we know
-# that we created blue to P by copying red to X, then we know that 
-# we can safely use blue to P.
-#
-# Here we repeat all the cases in Select_Proxy_Node_NHs(), 
-# as opposed to storing information about where
-# blue and red to P were copied from, because there are 
-# four special cases that we need to deal with in
-# 4.1.3, 4.2.3, 4.3.1, and 4.3.2.  In case 4.3.1, for example,
-# we can run Select_Alternates for S to reach X when F fails 
-# and determine that it is safe to use the red alternate to X,
-# and we also know that blue to P was copied from red to X.
-# In spite of this, blue to P may still hit F.  This can
-# happen because the complete blue path from S to P may differ
-# from the complete red path from S to X.  To simplify, we
-# consider the path from S to A, S's order proxy to reach X. 
-# In this case, S is unordered with respect to A, so the red 
-# path to X will start at S by following the increasing NH 
-# on the GADAG from S.  However, it will stop following the
-# increasing NHs once the path reaches a node which is ordered
-# with respect to A.  Call this node M.  When the red path to A 
-# reaches M, it will follow the decreasing NHs to A.  The
-# problem is that when M is using Select_Proxy_Node_NHs() to figure
-# out the blue NH to reach P, since M is ordered wrt A (in particular M>>A), 
-# M will use a different case in Select_Proxy_Node_NHs().
-# M will use case 4.1.2, where M will choose either 
-# blue_to_X/red_to_Y, or red_to_X/blue_to_Y, depending on 
-# the topological sort order of A and B.  So we can end up with
-# M choosing blue_to_X as its blue NH to reach P.  Since M>>A,
-# this corresponds to the increaing NH on the GADAG towards 
-# the GADAG root. This is different from M's red NH to A, so
-# the blue path from S to P can diverge from the red path from S to A.
-# In general, this can result in the blue_path from S to P 
-# hitting F, even though the red path from S to A doesn't.
-# Similar situations arise in the other three cases.
-#
-# Fortunately, there appears to be a solution.  In case 4.3.1,
-# whenever Select_Alternates() returns a result for X that
-# says it safe to S use red to reach X, but this doesn't actually
-# mean it is safe for S to reach P using the blue next-hop to P, 
-# Select_Alternates() for S to reach Y always returns a result that
-# says it is safe to use the red path to Y, which is reliable. 
-# So by looking for this condition, we can avoid using the
-# unreliable result to X to reach P, and use the reliable result 
-# to Y to reach P.  A similar solution works for all four cases.
-
 def Select_Alternates_Proxy_Node(P,F,primary_intf):
     S = primary_intf.local_node
     X = P.pnar_X
@@ -1456,16 +1400,6 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
     if F is B:
         return 'USE_BLUE'
     
-    # This was added in addition to Gabor's proposal
-    # When A and B are not in the same block, then
-    # S will be the localroot for either A or B.
-    # If F is in the same block as A, then it is
-    # safe to use red to P (since red to P goes to B
-    # from S immediately into a different block from A and F.)
-    # Similar logic applies if F is in the same block as B.
-    # IF F is not in the same block as A or B, then 
-    # neither red nor blue will hit F.
-
     if not In_Common_Block(A, B):
         if In_Common_Block(F, A):
             return 'USE_RED'
@@ -1618,13 +1552,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 #print("4.1.3")
                 if (alt_to_X == 'USE_RED' 
                     and alt_to_Y == 'USE_RED'):
-                    # Special Case:
-                    #red to A is simple decreasing NH to A.
-                    #red to B is decreasing to GR until finding
-                    #node ordered wrt B (call it G).  
-                    #So don't use red to B to avoid G having 
-                    #a different red NH to reach P.
-                    #So use red to A, which is blue to P.   
+                    # Special Case:   
                     return 'USE_BLUE'              
                 if alt_to_X == 'USE_RED':
                     return 'USE_BLUE'
@@ -1683,8 +1611,6 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 if (alt_to_X == 'USE_RED' 
                     and alt_to_Y == 'USE_RED'):
                     # Special Case:
-                    # Red to B is simple decreasing NH to B, so go to B,
-                    # which is Y, which is Red to P.
                     return 'USE_RED'
                 if alt_to_X == 'USE_RED':
                     return 'USE_BLUE'  
@@ -1858,18 +1784,21 @@ def Run_Basic_MRT_for_One_Source(topo, src):
     Select_Alts_For_One_Src_To_Island_Dests(topo,src)
     Store_Primary_and_Alts_For_One_Src_To_Island_Dests(topo,src)
 
-def Store_GADAG(topo):
+def Store_GADAG_and_Named_Proxies_Once(topo):
     for node in topo.node_list:
         for intf in node.intf_list:
             if intf.OUTGOING:
                 intf.STORED_OUTGOING = True
+    for prefix in topo.named_proxy_dict:
+        P = topo.named_proxy_dict[prefix]
+        topo.stored_named_proxy_dict[prefix] = P
     
 def Run_Basic_MRT_for_All_Sources(topo):
     for src in topo.node_list:
         Reset_Computed_Node_and_Intf_Values(topo)
         Run_Basic_MRT_for_One_Source(topo,src)
         if src is topo.gadag_root:
-            Store_GADAG(topo)
+            Store_GADAG_and_Named_Proxies_Once(topo)
 
 def Run_MRT_for_One_Source(topo, src):
     MRT_Island_Identification(topo, src, 0, 0)
@@ -1908,7 +1837,7 @@ def Run_MRT_for_All_Sources(topo):
             # src runs MRT if it is in same MRT island as test_gr
             Run_MRT_for_One_Source(topo,src)
             if src is topo.gadag_root:
-                Store_GADAG(topo)
+                Store_GADAG_and_Named_Proxies_Once(topo)
         else:
             # src still runs SPF if not in MRT island
             Run_Prim_SPF_for_One_Source(topo,src)
@@ -1996,6 +1925,6 @@ def Generate_Complex_Topology_and_Run_MRT():
     Write_Output_To_Files(topo, res_file_base)
 
 Generate_Basic_Topology_and_Run_MRT()
-
+ 
 Generate_Complex_Topology_and_Run_MRT()
 
