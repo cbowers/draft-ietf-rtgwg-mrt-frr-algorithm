@@ -4238,21 +4238,21 @@ def Run_MRT_for_One_Source(topo, src):
     Store_MRT_Nexthops_For_One_Src_To_Island_Dests(topo,src)
     Select_Alts_For_One_Src_To_Island_Dests(topo,src)
     Store_Primary_and_Alts_For_One_Src_To_Island_Dests(topo,src)
-    Create_Basic_Named_Proxy_Nodes(topo) #P#
-    Attach_Named_Proxy_Nodes(topo) #P#
-    Compute_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
-    Store_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
-    Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
-    Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
-    Select_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
-    Store_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Create_Basic_Named_Proxy_Nodes(topo) 
+    Attach_Named_Proxy_Nodes(topo) 
+    Compute_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
+    Store_MRT_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
+    Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
+    Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
+    Select_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
+    Store_Alts_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
 
 def Run_Prim_SPF_for_One_Source(topo,src):
     Normal_SPF(topo, src)
     Store_Primary_NHs_For_One_Source_To_Nodes(topo,src)
-    Create_Basic_Named_Proxy_Nodes(topo) #P#
-    Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
-    Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) #P#
+    Create_Basic_Named_Proxy_Nodes(topo) 
+    Compute_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
+    Store_Primary_NHs_For_One_Src_To_Named_Proxy_Nodes(topo,src) 
        
 def Run_MRT_for_All_Sources(topo):
     for src in topo.node_list:
