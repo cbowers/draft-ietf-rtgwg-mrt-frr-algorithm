@@ -95,7 +95,7 @@ class Interface:
         self.area = None
         self.MRT_INELIGIBLE = False
         self.IGP_EXCLUDED = False
-        self.STORED_OUTGOING = False
+        self.SIMULATION_OUTGOING = False
         self.init_new_computing_router()
     def init_new_computing_router(self):
         self.UNDIRECTED = True
@@ -240,10 +240,12 @@ def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
     while explore_list != []:
         next_rtr = explore_list.pop()
         for intf in next_rtr.intf_list:
-            if ( not intf.MRT_INELIGIBLE and not intf.IGP_EXCLUDED 
-                 and intf.area == area ):
+            if ( (not intf.MRT_INELIGIBLE)
+                 and (not intf.remote_intf.MRT_INELIGIBLE)
+                 and (not intf.IGP_EXCLUDED) and intf.area == area ):
                 if (profile_id in intf.remote_node.profile_id_list):
                     intf.IN_MRT_ISLAND = True
+                    intf.remote_intf.IN_MRT_ISLAND = True
                     if (not intf.remote_node.IN_MRT_ISLAND):
                         intf.remote_node.IN_MRT_ISLAND = True
                         explore_list.append(intf.remote_node)
@@ -728,7 +730,9 @@ def Select_Alternates_Internal(D, F, primary_intf,
             return 'USE_RED'
         if F.LOWER:
             return 'USE_BLUE'
-        assert(False)   
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        return 'USE_RED_OR_BLUE'
     if D_higher:
         if F.HIGHER and F.LOWER:
             return 'USE_BLUE'
@@ -739,8 +743,10 @@ def Select_Alternates_Internal(D, F, primary_intf,
                 return 'USE_BLUE'
             if (F.topo_order < D_topo_order):
                 return 'USE_RED'
-            assert(False) 
-        assert(False) 
+            assert(False)
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        return 'USE_RED_OR_BLUE'
     if D_lower:
         if F.HIGHER and F.LOWER:
             return 'USE_RED'
@@ -752,7 +758,9 @@ def Select_Alternates_Internal(D, F, primary_intf,
             if F.topo_order < D_topo_order:
                 return 'USE_RED'
             assert(False)        
-        assert(False)
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        return 'USE_RED_OR_BLUE'
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
@@ -764,14 +772,29 @@ def Select_Alternates_Internal(D, F, primary_intf,
                 return 'USE_BLUE'
             if primary_intf.INCOMING:
                 return 'USE_RED'
-            assert(False)
+            #This can occur when primary_intf is MRT_INELIGIBLE.
+            #This appears to be a case where the special 
+            #construction of the GADAG allows us to choose red,
+            #whereas with an arbitrary GADAG, neither red nor blue
+            #is guaranteed to work.  
+            assert(primary_intf.MRT_INELIGIBLE 
+                   or primary_intf.remote_intf.MRT_INELIGIBLE)
+            return 'USE_RED'
         if F.LOWER:
             return 'USE_RED'
         if F.HIGHER:
             return 'USE_BLUE'
-        assert(False)
-            
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        if F.topo_order > D_topo_order:
+            return 'USE_BLUE'
+        else:
+            return 'USE_RED'
+
 def Select_Alternates(D, F, primary_intf):
+    S = primary_intf.local_node
+    if not In_Common_Block(F, S):
+        return 'PRIM_NH_IN_DIFFERENT_BLOCK'
     if (D is F) or (D.order_proxy is F):
         return 'PRIM_NH_IS_D_OR_OP_FOR_D'
     D_lower = D.order_proxy.LOWER
@@ -779,6 +802,13 @@ def Select_Alternates(D, F, primary_intf):
     D_topo_order = D.order_proxy.topo_order
     return Select_Alternates_Internal(D, F, primary_intf,
                                       D_lower, D_higher, D_topo_order)
+
+
+def Is_Remote_Node_In_NH_List(node, intf_list):
+    for intf in intf_list:
+        if node is intf.remote_node:
+            return True
+    return False
 
 def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
     Normal_SPF(topo, x)
@@ -790,10 +820,12 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
             alt = Alternate()
             alt.failed_intf = failed_intf
             cand_alt_list = []                
-                
-            if failed_intf in x.island_intf_list:
-                alt.info = Select_Alternates(D,
-                    failed_intf.remote_node, failed_intf)
+            F = failed_intf.remote_node   
+            #We need to test if F is in the island, as opposed
+            #to just testing if failed_intf is in island_intf_list,
+            #because failed_intf could be marked as MRT_INELIGIBLE.
+            if F in topo.island_node_list:
+                alt.info = Select_Alternates(D, F, failed_intf)
             else:
                 #The primary next-hop is not in the MRT Island. 
                 #Either red or blue will avoid the primary next-hop,
@@ -812,6 +844,9 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                 Copy_List_Items(alt.nh_list, D.red_next_hops)
                 alt.fec = 'RED'
                 alt.prot = 'NODE_PROTECTION'
+            if (alt.info == 'PRIM_NH_IN_DIFFERENT_BLOCK'):
+                alt.fec = 'NO_ALTERNATE'
+                alt.prot = 'NO_PROTECTION'
             if (alt.info == 'PRIM_NH_IS_D_OR_OP_FOR_D'):
                 if failed_intf.OUTGOING and failed_intf.INCOMING:
                     # cut-link: if there are parallel cut links, use
@@ -835,21 +870,38 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                         alt.fec = 'NO_ALTERNATE'
                         alt.prot = 'NO_PROTECTION'
                     Copy_List_Items(alt.nh_list, cand_alt_list)
-                elif failed_intf in D.red_next_hops:
+                
+                # Use Is_Remote_Node_In_NH_List() is used, as opposed
+                # to just checking if failed_intf is in D.red_next_hops,
+                # because failed_intf could be marked as MRT_INELIGIBLE.
+                elif Is_Remote_Node_In_NH_List(F, D.red_next_hops):
                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
                     alt.fec = 'BLUE'
                     alt.prot = 'LINK_PROTECTION'
                 else:
+                    if not Is_Remote_Node_In_NH_List(F, D.blue_next_hops):
+                        print("WEIRD behavior")
                     Copy_List_Items(alt.nh_list, D.red_next_hops)
                     alt.fec = 'RED'
                     alt.prot = 'LINK_PROTECTION'
+                  
+                # working version but has issue with MRT_INELIGIBLE link being
+                # primary_NH  
+#                 elif failed_intf in D.red_next_hops:
+#                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
+#                     alt.fec = 'BLUE'
+#                     alt.prot = 'LINK_PROTECTION'
+#                 else:
+#                     Copy_List_Items(alt.nh_list, D.red_next_hops)
+#                     alt.fec = 'RED'
+#                     alt.prot = 'LINK_PROTECTION'
             D.alt_list.append(alt)
 
 def Write_GADAG_To_File(topo, file_prefix):
     gadag_edge_list = []
     for node in topo.node_list:
         for intf in node.intf_list:
-            if intf.STORED_OUTGOING:
+            if intf.SIMULATION_OUTGOING:
                 local_node =  "%04d" % (intf.local_node.node_id)
                 remote_node = "%04d" % (intf.remote_node.node_id)
                 intf_data = "%03d" % (intf.link_data)
@@ -1550,15 +1602,13 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                     assert(False)  
             else:
                 #print("4.1.3")
-                if (alt_to_X == 'USE_RED' 
-                    and alt_to_Y == 'USE_RED'):
-                    # Special Case:   
-                    return 'USE_BLUE'              
-                if alt_to_X == 'USE_RED':
-                    return 'USE_BLUE'
-                if alt_to_Y == 'USE_RED':
+                if (F.LOWER and not F.HIGHER
+                    and F.topo_order > A.topo_order):
+                    #print("4.1.3.1")
                     return 'USE_RED'
-                assert(False)  
+                else:
+                    #print("4.1.3.2")
+                    return 'USE_BLUE'        
         if A.HIGHER:
             #print("4.2")
             if B.HIGHER:
@@ -1595,39 +1645,27 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 assert(False)      
             else:
                 #print("4.2.3")
-                if (alt_to_X == 'USE_BLUE' 
-                    and alt_to_Y == 'USE_BLUE'):
-                    # Special Case:
-                    return 'USE_BLUE'
-                if alt_to_X == 'USE_BLUE':
-                    return 'USE_BLUE'
-                if alt_to_Y == 'USE_BLUE':
+                if (F.HIGHER and not F.LOWER
+                    and F.topo_order < A.topo_order):
                     return 'USE_RED'
-                assert(False)                      
+                else:
+                    return 'USE_BLUE'                                
         else:
             #print("4.3")
             if B.LOWER:
                 #print("4.3.1")
-                if (alt_to_X == 'USE_RED' 
-                    and alt_to_Y == 'USE_RED'):
-                    # Special Case:
+                if (F.LOWER and not F.HIGHER
+                    and F.topo_order > B.topo_order):
+                    return 'USE_BLUE'
+                else:
                     return 'USE_RED'
-                if alt_to_X == 'USE_RED':
-                    return 'USE_BLUE'  
-                if (alt_to_Y == 'USE_RED'):
-                    return 'USE_RED'
-                assert(False)
             if B.HIGHER:
                 #print("4.3.2")
-                if (alt_to_X == 'USE_BLUE' 
-                    and alt_to_Y == 'USE_BLUE'):
-                    # Special Case:
-                    return 'USE_RED'
-                if alt_to_X == 'USE_BLUE':
+                if (F.HIGHER and not F.LOWER
+                    and F.topo_order < B.topo_order):
                     return 'USE_BLUE'
-                if alt_to_Y == 'USE_BLUE':
+                else:
                     return 'USE_RED'
-                assert(False)  
             else:
                 #print("4.3.3")
                 if A.topo_order < B.topo_order:
@@ -1788,7 +1826,9 @@ def Store_GADAG_and_Named_Proxies_Once(topo):
     for node in topo.node_list:
         for intf in node.intf_list:
             if intf.OUTGOING:
-                intf.STORED_OUTGOING = True
+                intf.SIMULATION_OUTGOING = True
+            else:
+                intf.SIMULATION_OUTGOING = False
     for prefix in topo.named_proxy_dict:
         P = topo.named_proxy_dict[prefix]
         topo.stored_named_proxy_dict[prefix] = P
