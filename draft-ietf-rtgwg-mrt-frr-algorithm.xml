@@ -50,7 +50,7 @@
 <!-- keep one blank line between list items -->
 <!-- end of list of popular I-D processing instructions -->
 
-<rfc category="std" docName="draft-ietf-rtgwg-mrt-frr-algorithm-05" ipr="trust200902">
+<rfc category="std" docName="draft-ietf-rtgwg-mrt-frr-algorithm-06" ipr="trust200902">
   <!-- category values: std, bcp, info, exp, and historic
      ipr values: full3667, noModification3667, noDerivatives3667
      you can add the attributes updates="NNNN" and obsoletes="NNNN" 
@@ -137,7 +137,7 @@
      </address>
     </author>
 
-    <date day="2" month="July" year="2015"/>
+    <date day="9" month="October" year="2015"/>
 
     <area>Routing</area>
 
@@ -1127,13 +1127,16 @@ MRT_Island_Identification(topology, computing_rtr, profile_id, area)
   explore_list = { computing_rtr }
   while (explore_list is not empty)
      next_rtr = remove_head(explore_list)
-     for each interface in next_rtr
-        if interface is (not MRT-ineligible and not IGP-excluded
-                         and in area) 
-           if ((interface.remote_node supports profile_id) and
-               (interface.remote_node.IN_MRT_ISLAND is FALSE))
-              interface.remote_node.IN_MRT_ISLAND = TRUE
-              add_to_tail(explore_list, interface.remote_node)
+     for each intf in next_rtr
+        if (not intf.MRT-ineligible 
+           and not intf.remote_intf.MRT-ineligible
+           and not intf.IGP-excluded and (intf in area)
+           and (intf.remote_node supports profile_id) )
+           intf.IN_MRT_ISLAND = TRUE
+           intf.remote_node.IN_MRT_ISLAND = TRUE   
+           if (not intf.remote_node.IN_MRT_ISLAND))
+              intf.remote_node.IN_MRT_ISLAND = TRUE
+              add_to_tail(explore_list, intf.remote_node)
 ]]></artwork>
 </figure>
 
@@ -1189,10 +1192,19 @@ to administratively configure some interfaces as ineligible to carry
 MRT FRR traffic. This constraint MUST be consistently flooded via the
 IGP <xref target="I-D.ietf-ospf-mrt"/> <xref
 target="I-D.ietf-isis-mrt"/> by the owner of the interface, so that
-links are clearly known to be MRT-ineligible and not explored or used
-in the MRT algorithm.  In the algorithm description, it is assumed
-that such links and nodes will not be explored or used, and no more
-discussion is given of this restriction.</t>
+links are known to be MRT-ineligible and not explored or used
+in the MRT algorithm.  When a either interface on a link is advertised as 
+MRT-ineligible, the link MUST NOT be included in the MRT Island, and 
+will thus be excluded from the GADAG.  Computation of MRT next-hops 
+will therefore not use any MRT-ineligible links.  The MRT algorithm does
+still need to consider MRT-ineligible links when computing FRR alternates,
+because an MRT-ineligible link can still be the shortest-path next-hop to 
+reach a destination.</t>
+
+<t>When a broadcast interface is advertised as MRT-ineligible, then the 
+pseudo-node representing the entire broadcast network MUST NOT be 
+included in the MRT Island. This is equivalent to excluding all of the 
+broadcast interfaces on that broadcast network from the MRT Island.</t> 
 
 </section>
 
@@ -1673,7 +1685,7 @@ complete specific path taken but just the appropriate next-hops to
 use.  The identities of G and H are not determined by the computing
 node X.</t>
 
-<t>The final case to considered is when the GADAG root R computes its own
+<t>The final case to consider is when the GADAG root R computes its own
 next-hops.  Since the GADAG root R is &lt;&lt; all other nodes, running an
 increasing-SPF rooted at R will reach all other nodes; the MRT-Blue
 next-hops are those found with this increasing-SPF.  Similarly, since
@@ -1889,7 +1901,8 @@ for that primary next hop.  The algorithm is given in
 <xref target="fig_alternate_selection_nh"/> and discussed
 afterwards.</t>
 
-<figure anchor="fig_alternate_selection_nh" align="center">
+<figure anchor="fig_alternate_selection_nh" align="center"
+title="Select_Alternates() and Select_Alternates_Internal()">
 <artwork align="center"><![CDATA[
 Select_Alternates_Internal(D, F, primary_intf,
                                D_lower, D_higher, D_topo_order):
@@ -1903,6 +1916,9 @@ Select_Alternates_Internal(D, F, primary_intf,
             return USE_RED
         if F.LOWER
             return USE_BLUE  
+        //F unordered wrt S
+        return USE_RED_OR_BLUE
+           
     else if D_higher
         if F.HIGHER and F.LOWER
             return USE_BLUE
@@ -1913,6 +1929,9 @@ Select_Alternates_Internal(D, F, primary_intf,
                 return USE_BLUE
             if (F.topo_order < D_topo_order)
                 return USE_RED
+        //F unordered wrt S
+        return USE_RED_OR_BLUE
+
     else if D_lower
         if F.HIGHER and F.LOWER
             return USE_RED
@@ -1923,20 +1942,32 @@ Select_Alternates_Internal(D, F, primary_intf,
                 return USE_BLUE
             if F.topo_order < D_topo_order
                 return USE_RED
+        //F unordered wrt S
+        return USE_RED_OR_BLUE
+
     else  //D is unordered wrt S
         if F.HIGHER and F.LOWER
             if primary_intf.OUTGOING and primary_intf.INCOMING
-                // this case should not occur
+                return USE_RED_OR_BLUE
             if primary_intf.OUTGOING
                 return USE_BLUE
             if primary_intf.INCOMING
                 return USE_RED
+            //primary_intf not in GADAG
+            return USE_RED
         if F.LOWER
             return USE_RED
         if F.HIGHER
             return USE_BLUE
+        //F unordered wrt S
+        if F.topo_order > D_topo_order:
+            return USE_BLUE
+        else:
+            return USE_RED
 
 Select_Alternates(D, F, primary_intf)
+    if not In_Common_Block(F, S)
+        return PRIM_NH_IN_DIFFERENT_BLOCK
     if (D is F) or (D.order_proxy is F)
         return PRIM_NH_IS_D_OR_OP_FOR_D
     D_lower = D.order_proxy.LOWER
@@ -1954,7 +1985,7 @@ Select_Alternates(D, F, primary_intf)
    then the primary next-hop must be a cut-link, so either MRT could be
    used but the set of MRT next-hops must be pruned to avoid the failed 
    primary next-hop interface.  To indicate this case, Select_Alternates returns
-   PRIM_NH_IS_D_OR_OP_FOR_D. Explicit pseudocode to handle the three sub-cases above 
+   PRIM_NH_IS_D_OR_OP_FOR_D. Explicit pseudo-code to handle the three sub-cases above 
    is not provided.</t>
    
 <t> The logic behind Select_Alternates_Internal is described in 
@@ -2018,15 +2049,22 @@ has already been handled." >
 |      |            +------+-----------------+------------+------------+
 |      |            | F>>S | topo(F)>topo(D) | F on a     | Use Blue   |
 | S is | Blue path: | and  | implies that    | decreasing | to avoid   |
-| R    | Increasing | F<<S | F>>D or F??D    | path from  | F          |
-|      | path to D. |      |                 | S to D or  |            |
-|      | Red path:  |      |                 | neither    |            |
+| R    | Increasing | F<<S,| F>>D or F??D    | path from  | F          |
+|      | path to D. | F is |                 | S to D or  |            |
+|      | Red path:  | R    |                 | neither    |            |
 |      | Decreasing |      +-----------------+------------+------------+
 |      | path to D. |      | topo(F)<topo(D) | F on an    | Use Red    |
 |      |            |      | implies that    | increasing | to avoid   |
 |      |            |      | F<<D or F??D    | path from  | F          |
 |      |            |      |                 | S to D or  |            |
 |      |            |      |                 | neither    |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F??S | Can only occur  | F is on    | Use Red    |
+|      |            |      | when link       | neither    | or Blue    |
+|      |            |      | between         | increasing | to avoid   |
+|      |            |      | F and S         | nor decr.  | F          |
+|      |            |      | is marked       | path from  |            |
+|      |            |      | MRT_INELIGIBLE  | S to D or R|            |
 +------+------------+------+-----------------+------------+------------+
 | D>>S | Blue path: | F<<S | additional      | F on       | Use Blue   |
 | only | Increasing | only | criteria        | decreasing | to avoid   |
@@ -2052,6 +2090,13 @@ has already been handled." >
 |      |            | F<<S,| not needed      |            | F          |
 |      |            | F is |                 |            |            |
 |      |            | R    |                 |            |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F??S | Can only occur  | F is on    | Use Red    |
+|      |            |      | when link       | neither    | or Blue    |
+|      |            |      | between         | increasing | to avoid   |
+|      |            |      | F and S         | nor decr.  | F          |
+|      |            |      | is marked       | path from  |            |
+|      |            |      | MRT_INELIGIBLE  | S to D or R|            |
 +------+------------+------+-----------------+------------+------------+
 | D<<S | Blue path: | F>>S | additional      | F on       | Use Red    |
 | only | Increasing | only | criteria        | increasing | to avoid   |
@@ -2077,18 +2122,38 @@ has already been handled." >
 |      |            | F<<S,| not             |            | F          |
 |      |            | F is | needed          |            |            |
 |      |            | R    |                 |            |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F??S | Can only occur  | F is on    | Use Red    |
+|      |            |      | when link       | neither    | or Blue    |
+|      |            |      | between         | increasing | to avoid   |
+|      |            |      | F and S         | nor decr.  | F          |
+|      |            |      | is marked       | path from  |            |
+|      |            |      | MRT_INELIGIBLE  | S to D or R|            |
 +------+------------+------+-----------------+------------+------------+
 | D??S | Blue path: | F<<S | additional      | F on a     | Use Red    |
 |      | Decr. from | only | criteria        | decreasing | to avoid   |
 |      | S to first |      | not needed      | path from  | F          |
-|      | node H>>D, |      |                 | S to H.    |            |
+|      | node K<<D, |      |                 | S to K.    |            |
 |      | then incr. +------+-----------------+------------+------------+
 |      | to D.      | F>>S | additional      | F on an    | Use Blue   |
 |      | Red path:  | only | criteria        | increasing | to avoid   |
 |      | Incr. from |      | not needed      | path from  | F          |
-|      | S to first |      |                 | S to G     |            |
-|      | node G<<D, |      |                 |            |            |
+|      | S to first |      |                 | S to L     |            |
+|      | node L>>D, |      |                 |            |            |
 |      | then decr. |      |                 |            |            |
+|      |            +------+-----------------+------------+------------+
+|      |            | F??S | F<-->S link is  |            |            |
+|      |            |      | MRT_INELIGIBLE  |            |            |
+|      |            |      +-----------------+------------+------------+
+|      |            |      | topo(F)>topo(D) | F on decr. | Use Blue   |
+|      |            |      | implies that    | path from  | to avoid   |
+|      |            |      | F>>D or F??D    | L to D or  | F          |
+|      |            |      |                 | neither    |            |
+|      |            |      +-----------------+------------+------------+
+|      |            |      | topo(F)<topo(D) | F on incr. | Use Red    |
+|      |            |      | implies that    | path from  | to avoid   |
+|      |            |      | F<<D or F??D    | K to D or  | F          |
+|      |            |      |                 | neither    |            |
 |      |            +------+-----------------+------------+------------+
 |      |            | F>>S | GADAG link      | F on an    | Use Blue   |
 |      |            | and  | direction       | incr. path | to avoid   |
@@ -2098,18 +2163,50 @@ has already been handled." >
 |      |            |      | direction       | decr. path | to avoid   |
 |      |            |      | S<-F            | from S     | F          |
 |      |            |      +-----------------+------------+------------+
-|      |            |      | GADAG link      | Implies F is the order  |
-|      |            |      | direction       | proxy for D, which has  |
-|      |            |      | S<-->F          | already been handled.   |
-+------+------------+------+-----------------+------------+------------+
+|      |            |      | GADAG link      | Either F is the order   |
+|      |            |      | direction       | proxy for D (case       |
+|      |            |      | S<-->F          | already handled) or D   |
+|      |            |      |                 | is in a different block |
+|      |            |      |                 | from F, in which case   |
+|      |            |      |                 | Red or Blue avoids F    |
+|      |            |      +-----------------+-------------------------+
+|      |            |      | S-F link not    | Relies on special       |
+|      |            |      | in GADAG,       | construction of GADAG   |
+|      |            |      | only when       | to demonstrate that     |
+|      |            |      | S-F link is     | using Red avoids F      |
+|      |            |      | MRT_INELIGIBLE  | (see text)              |
++------+------------+------+-----------------+-------------------------+
 ]]></artwork>
 </figure>
 
- <t>As an example, consider the ADAG depicted in <xref 
+<t>The last case in <xref target="S_D_F_case_table"/> requires additional 
+explanation. The fact that the red path from S to D in this case avoids 
+F relies on a special property of the GADAGs that we have constructed 
+in this algorithm, a property not shared by all GADAGs in general. When 
+D is unordered with respect to S, and F is the localroot for S, it can 
+occur that the link between S and F is not in the GADAG only when that 
+link has been marked MRT_INELIGIBLE. For an arbitrary GADAG, S doesn't 
+have enough information based on the computed order relationships to 
+determine if the red path or blue path will hit F (which is also the 
+localroot) before hitting K or L, and making it safely to D. However, 
+the GADAGs that we construct using the algorithm in this document are 
+not arbitrary GADAGs. They have the additional property that incoming 
+links to a localroot come from only one other node in the same block. 
+This is a result of the method of construction. This additional property 
+guarantees that the red path from S to D will never pass through the 
+localroot of S. (That would require the localroot to play the role of L, 
+the first node in the path ordered higher than D, which would in turn 
+require the localroot to have two incoming links in the GADAG, which 
+cannot happen.) Therefore it is safe to use the red path to avoid F with 
+these specially constructed GADAGs. </t> 
+
+<t>As an example of how to Select_Alternates_Internal() operates,
+consider the ADAG depicted in <xref 
 target="ADAG-for-nh-sel"/> and first suppose that G is the source, D is 
 the destination and H is the failed next-hop. Since D&gt;&gt;G, we need 
 to compare H.topo_order and D.topo_order. Since 
-D.topo_order&gt;H.topo_order, D must be not smaller than H, so we should 
+D.topo_order&gt;H.topo_order, D must be either higher than H or unordered
+with respect to H, so we should 
 select the decreasing path towards the root. If, however, the 
 destination were instead J, we must find that 
 H.topo_order&gt;J.topo_order, so we must choose the increasing Blue 
@@ -2134,141 +2231,661 @@ first decreasing then increasing, path is selected.</t>
 
 </section>
 
-<section anchor="sec_proxy_nodes" title="Finding FRR Next-Hops for Proxy-Nodes">
+<section anchor="sec_proxy_nodes" title="Finding MRT Next-Hops for Proxy-Nodes">
 
 <t>As discussed in Section 11.2 of <xref
 target="I-D.ietf-rtgwg-mrt-frr-architecture"/>, it is necessary to
 find MRT-Blue and MRT-Red next-hops and MRT-FRR alternates for a named
-proxy-nodes. An example case is for a router that is not part of that
+proxy-nodes. An example use case is for a router that is not part of that
 local MRT Island, when there is only partial MRT support in the
 domain.</t>
 
-<t>A first incorrect and naive approach to handling proxy-nodes, which
-cannot be transited, is to simply add these proxy-nodes to the graph
-of the network and connect it to the routers through which the new
-proxy-node can be reached. Unfortunately, this can introduce some new
-ordering between the border routers connected to the new node which
-could result in routing MRT paths through the proxy-node.  Thus, this
-naive approach would need to recompute GADAGs and redo SPTs for each
-proxy-node.</t>
-
-<t>Instead of adding the proxy-node to the original network graph,
-each individual proxy-node can be individually added to the GADAG.
-The proxy-node is connected to at most two nodes in the GADAG.
-Section 10.2 of <xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/>
-defines how the proxy-node attachments MUST be determined.  The
+<t>The proxy-node is connected to at most two nodes in the GADAG.
+Section 11.2 of <xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/>
+defines how the proxy-node attachment routers MUST be determined.  The
 degenerate case where the proxy-node is attached to only one node in
 the GADAG is trivial as all needed information can be derived from
-that attachment node; if there are different interfaces, then some can
-be assigned to MRT-Red and others to MRT_Blue.</t>
+that proxy node attachment router.  If there are multiple interfaces
+connecting the proxy node to the single proxy node attachment router,
+then some canbe assigned to MRT-Red and others to MRT_Blue.</t>
 
-<t>Now, consider the proxy-node that is attached to exactly two nodes
-in the GADAG.  Let the order_proxies of these nodes be A and B. Let
-the current node, where next-hop is just being calculated, be S.  If
-one of these two nodes A and B is the local root of S, let
-A=S.local_root and the other one be B. Otherwise, let A.topo_order
-&lt; B.topo_order. </t>
-
-<t>A valid GADAG was constructed. Instead doing an increasing-SPF and
-a decreasing-SPF to find ordering for the proxy-nodes, the following
-simple rules, providing the same result, can be used independently for
-each different proxy-node.  For the following rules, let
-X=A.local_root, and if A is the local root, let that be strictly lower
-than any other node. Always take the first rule that matches.
+<t>Now, consider the proxy-node P that is attached to two proxy-node 
+attachment routers. The pseudo-code for Select_Proxy_Node_NHs(P,S) in 
+<xref target="fig_select_proxy_node_nhs"/> specifies how a 
+computing-router S MUST compute the MRT red and blue next-hops to 
+reach proxy-node P. The proxy-node attachment router with the lower value of 
+mrt_node_id (as defined in <xref target="mrt_node_id_and_metric"/>) is 
+assigned to X, and the other proxy-node attachment router is assigned to 
+Y. We will be using the relative order of X,Y, and S in the partial
+order defined by the GADAG to determine the MRT red and blue next-hops 
+to reach P, so we also define A and B as the order proxies for X and Y,
+respectively, with respect to S.  The order proxies for all nodes with 
+respect to S were already computed in Compute_MRT_NextHops().  
 </t>
 
-<figure align="center">
+<figure anchor="fig_select_proxy_node_nhs" align="center"
+title="Select_Proxy_Node_NHs()">
 <artwork align="left"><![CDATA[
-
-Rule   Condition     Blue NH      Red NH        Notes
- 1       S=X         Blue to A    Red to B
- 2       S<<A        Blue to A    Red to R
- 3       S>>B        Blue to R    Red to B
- 4       A<<S<<B     Red to A     Blue to B
- 5       A<<S        Red to A     Blue to R     S not ordered w/ B
- 6       S<<B        Red to R     Blue to B     S not ordered w/ A
- 7     Otherwise     Red to R     Blue to R     S not ordered w/ A+B
+def Select_Proxy_Node_NHs(P,S):
+    if P.pnar1.node.node_id < P.pnar2.node.node_id:
+        X = P.pnar1.node
+        Y = P.pnar2.node
+    else:
+        X = P.pnar2.node
+        Y = P.pnar1.node
+    P.pnar_X = X
+    P.pnar_Y = Y
+    A = X.order_proxy
+    B = Y.order_proxy
+    if (A is S.localroot 
+        and B is S.localroot):
+        #print("1.0")
+        Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+        Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+        return
+    if (A is S.localroot 
+        and B is not S.localroot):
+        #print("2.0")
+        if B.LOWER:
+            #print("2.1")
+            Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return
+        if B.HIGHER:
+            #print("2.2")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+            return
+        else:
+            #print("2.3")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return           
+    if (A is not S.localroot
+        and B is S.localroot):
+        #print("3.0")
+        if A.LOWER:
+            #print("3.1")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+            return            
+        if A.HIGHER:
+            #print("3.2")
+            Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return
+        else:
+            #print("3.3")
+            Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+            Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+            return        
+    if (A is not S.localroot
+        and B is not S.localroot):
+        #print("4.0")
+        if (S is A.localroot or S is B.localroot):
+            #print("4.05")
+            if A.topo_order < B.topo_order:
+                #print("4.05.1")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                return
+            else:
+                #print("4.05.2")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                return                                 
+        if A.LOWER:
+            #print("4.1")
+            if B.HIGHER:
+                #print("4.1.1")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                return                  
+            if B.LOWER:
+                #print("4.1.2")
+                if A.topo_order < B.topo_order:
+                    #print("4.1.2.1")
+                    Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                    return
+                else:
+                    #print("4.1.2.2")
+                    Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                    return                    
+            else:
+                #print("4.1.3")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                return
+        if A.HIGHER:
+            #print("4.2")
+            if B.HIGHER:
+                #print("4.2.1")
+                if A.topo_order < B.topo_order:
+                    #print("4.2.1.1")
+                    Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
+                    return
+                else:
+                    #print("4.2.1.2")
+                    Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                    return                    
+            if B.LOWER:
+                #print("4.2.2")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
+                return           
+            else:
+                #print("4.2.3")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops) 
+                return 
+        else:
+            #print("4.3")
+            if B.LOWER:
+                #print("4.3.1")
+                Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.red_next_hops) 
+                return
+            if B.HIGHER:
+                #print("4.3.2")
+                Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                return
+            else:
+                #print("4.3.3")
+                if A.topo_order < B.topo_order:
+                    #print("4.3.3.1")
+                    Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.red_next_hops)
+                    return
+                else:
+                    #print("4.3.3.2")
+                    Copy_List_Items(P.blue_next_hops, X.red_next_hops)
+                    Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
+                    return
+    assert(False)
 ]]></artwork>
 </figure>
 
-<t>
-These rules are realized in the following pseudocode where P is the
-proxy-node, X and Y are the nodes that P is attached to, and S is the
-computing router:
-</t>
+<t> It is useful to understand up front that the blue next-hops to reach 
+proxy-node P produced by Select_Proxy_Node_NHs() will always be the 
+next-hops that reach proxy-node attachment router X, while the red 
+next-hops to reach proxy-node P will always be the next-hops that reach 
+proxy-node attachment router Y. This is different from the red and blue 
+next-hops produced by Compute_MRT_NextHops() where, for example, blue 
+next-hops to a destination that is ordered with respect to the source 
+will always correspond to an INCREASING next-hop on the GADAG. The exact 
+choice of which next-hops chosen by Select_Proxy_Node_NHs() as the blue 
+next-hops to reach P (which will necessarily go through X on its way to 
+P) does depend on the GADAG, but the relationship is more complex than 
+was the case with Compute_MRT_NextHops().</t> 
 
-<figure align="center">
-<artwork align="left"><![CDATA[
-Select_Proxy_Node_NHs(P, S, X, Y)
-    if (X.order_proxy.topo_order < Y.order_proxy.topo_order)
-        //This fits even if X.order_proxy=S.local_root
-        A=X.order_proxy
-        B=Y.order_proxy
-    else
-        A=Y.order_proxy
-        B=X.order_proxy
+<t> There are twenty-one different relative order relationships between 
+A, B and S that Select_Proxy_Node_NHs() uses to determine red and blue 
+next-hops to P. This document does not attempt to provide an exhaustive 
+description of each case considered in Select_Proxy_Node_NHs(). Instead 
+we provide a high level overview of the different cases, and we consider 
+a few cases in detail to give an example of the reasoning that can be 
+used to understand each case. </t> 
 
-    if (S==A.local_root)
-        P.blue_next_hops = A.blue_next_hops
-        P.red_next_hops  = B.red_next_hops
-        return
-    if (A.higher)
-        P.blue_next_hops = A.blue_next_hops
-        P.red_next_hops  = R.red_next_hops
-        return
-    if (B.lower)
-        P.blue_next_hops = R.blue_next_hops
-        P.red_next_hops  = B.red_next_hops
-        return
-    if (A.lower && B.higher)
-        P.blue_next_hops = A.red_next_hops
-        P.red_next_hops  = B.blue_next_hops
-        return
-    if (A.lower)
-        P.blue_next_hops = R.red_next_hops
-        P.red_next_hops  = B.blue_next_hops
-        return
-    if (B.higher)
-        P.blue_next_hops = A.red_next_hops
-        P.red_next_hops  = R.blue_next_hops
-        return
-    P.blue_next_hops = R.red_next_hops
-    P.red_next_hops  = R.blue_next_hops
-    return
+<t> At the highest level, Select_Proxy_Node_NHs() distinguishes between 
+four different cases depending on whether or not A or B is the localroot 
+for S. For example, for case 4.0, neither A nor B is the localroot for 
+S. Case 4.05 addresses the case where S is the localroot for either A or 
+B, while cases 4.1, 4.2, and 4.3 address the cases where A is ordered 
+lower than S, A is ordered higher than S, or A is unordered with respect 
+to S on the GADAG. In general, each of these cases is then further 
+subdivided into whether or not B is ordered lower than S, B is ordered 
+higher than S, or B is unordered with respect to S.  In some cases we 
+also need a further level of discrimination, where we use the topological
+sort order of A with respect to B.</t>
 
-]]></artwork>
-</figure>
+<t> As a detailed example, let's consider case 4.1 and all of its 
+sub-cases, and explain why the red and blue next-hops to reach P are 
+chosen as they are in Select_Proxy_Node_NHs(). In case 4.1, neither A 
+nor B is the localroot for S, S is not the localroot for A or B, and A 
+is ordered lower than S on the GADAG. In this situation, we know that 
+the red path to reach X (as computed in Compute_MRT_NextHops()) will 
+follow DECREASING next-hops towards A, while the blue path to reach X 
+will follow INCREASING next-hops to the localroot, and then INCREASING 
+next-hops to A. </t> 
 
-<t>
-After finding the the red and the blue next-hops, it is necessary to
-know which one of these to use in the case of failure. This can be
-done by Select_Alternates_Inner(). In order to use
-Select_Alternates_Internal(), we need to know if P is greater, less or
-unordered with S, and P.topo_order. P.lower = B.lower, P.higher =
-A.higher, and any value is OK for P.topo_order, as long as
-A.topo_order&lt;=P.topo_order&lt;=B.topo_order and P.topo_order is not
-equal to the topo_order of the failed node. So for simplicity let
-P.topo_order=A.topo_order when the next-hop is not A, and
-P.topo_order=B.topo_order otherwise.  This gives the following
-pseudo-code:
-</t>
+<t>Now consider sub-case 4.1.1 where B is ordered higher than S. In 
+this situation, we know that the blue path to reach Y will follow 
+INCREASING next-hops towards B, while the red next-hops to reach Y will 
+follow DECREASING next-hops to the localroot, and then DECREASING 
+next-hops to B. So to reach X and Y by two disjoint paths, we can choose 
+the red next-hops to X and the blue next-hops to Y. We have chosen the 
+convention that blue next-hops to P are those that pass through X, and 
+red next-hops to P are those that pass through Y, so we can see that 
+case 4.1.1 produces the desired result. Choosing blue to X and red to Y 
+does not produce disjoint paths because the paths intersect at least at 
+the localroot. </t> 
 
-<figure anchor="fig_alternate_proxy_node" align="center">
+<t>Now consider sub-case 4.1.2 where B is ordered lower than S. In this 
+situation, we know that the red path to reach Y will follow DECREASING 
+next-hops towards B, while the BLUE next-hops to reach Y will follow 
+INCREASING next-hops to the localroot, and then INCREASING next-hops to 
+A. The choice here is more difficult than in 4.1.1 because A and B are 
+both on the DECREASING path from S towards the localroot. We want to use 
+the direct DECREASING(red) path to the one that is nearer to S on the 
+GADAG. We get this extra information by comparing the topological sort 
+order of A and B. If A.topo_order&lt;B.topo_order, then we use red to Y 
+and blue to X, since the red path to Y will DECREASE to B without 
+hitting A, and the blue path to X will INCREASE to A without hitting B. 
+Instead, if A.topo_order&gt;B.topo_order, then we use red to X and blue 
+to Y. </t> 
+
+<t>Note that when A is unordered with respect to B, the result of
+comparing A.topo_order with B.topo_order could be greater than or less 
+than. In this case, the result doesn't matter because either choice (red 
+to Y and blue to X or red to X and blue to Y) would work. What is 
+required is that all nodes in the network give the same result when 
+comparing A.topo_order with B.topo_order. This is guarantee by having 
+all nodes run the same algorithm (Run_Topological_Sort_GADAG()) to 
+compute the topological sort order.</t> 
+
+<t>Finally we consider case 4.1.3, where B is unordered with respect to 
+S. In this case, the blue path to reach Y will follow the DECREASING 
+next-hops towards the localroot until it reaches some node (K) which is 
+ordered less than B, after which it will take INCREASING next-hops to B. 
+The red path to reach Y will follow the INCREASING next-hops towards the 
+localroot until it reaches some node (L) which is ordered greater than 
+B, after which it will take DECREASING next-hops to B. Both K and A are 
+reached by DECREASING from S, but we don't have information about 
+whether or not that DECREASING path will hit K or A first. Instead, we 
+do know that the INCREASING path from S will hit L before reaching A. 
+Therefore, we use the red path to reach Y and the red path to reach X.</t>
+
+<t>Similar reasoning can be applied to understand the other seventeen 
+cases used in Select_Proxy_Node_NHs(). However, cases 2.3 and 3.3 
+deserve special attention because the correctness of the solution for 
+these two cases relies on a special property of the GADAGs that we have 
+constructed in this algorithm, a property not shared by all GADAGs in 
+general. Focusing on case 2.3, we consider the case where A is the 
+localroot for S, while B is not, and B is unordered with respect to S. 
+The red path to X DECREASES from S to the localroot A, while the blue 
+path to X INCREASES from S to the localroot A. The blue path to Y 
+DECREASES towards the localroot A until it reaches some node (K) which 
+is ordered less than B, after which the path INCREASES to B. The red 
+path to Y INCREASES towards the localroot A until it reaches some node 
+(L) which is ordered greater than B, after which the path DECREASES to 
+B. It can be shown that for an arbitrary GADAG, with only the ordering 
+relationships computed so far, we don't have enough information to 
+choose a pair of paths to reach X and Y that are guaranteed to be 
+disjoint. In some topologies, A will play the role of K, the first node 
+ordered less than B on the blue path to Y. In other topologies, A will 
+play the role of L, the first node ordered greater than B on the red 
+path to Y. The basic problem is that we cannot distinguish between these 
+two cases based on the ordering relationships.</t> 
+
+<t> As discussed <xref target="sec_mrt_alternates"/>, the GADAGs that we 
+construct using the algorithm in this document are not arbitrary GADAGs. 
+They have the additional property that incoming links to a localroot 
+come from only one other node in the same block. This is a result of the 
+method of construction. This additional property guarantees that 
+localroot A will never play the role of L in the red path to Y, since L 
+must have at least two incoming links from different nodes in the same 
+block in the GADAG. This in turn allows Select_Proxy_Node_NHs() to 
+choose the red path to Y and the red path to X as the disjoint MRT paths 
+to reach P.</t> 
+
+<t> After finding the red and the blue next-hops for a given proxy-node 
+P, it is necessary to know which one of these to use in the case of 
+failure. This can be done by Select_Alternates_Proxy_Node(), as shown in 
+the pseudo-code in <xref target="fig_select_alternates_proxy_node"/>. </t>
+
+<figure anchor="fig_select_alternates_proxy_node" align="center"
+title="Select_Alternates_Proxy_Node()">
 <artwork align="center"><![CDATA[
+def Select_Alternates_Proxy_Node(P,F,primary_intf):
+    S = primary_intf.local_node
+    X = P.pnar_X
+    Y = P.pnar_Y
+    A = X.order_proxy
+    B = Y.order_proxy
+    if F is A and F is B:
+        return 'PRIM_NH_IS_OP_FOR_BOTH_X_AND_Y'
+    if F is A:
+        return 'USE_RED'
+    if F is B:
+        return 'USE_BLUE'
+    
+    if not In_Common_Block(A, B):
+        if In_Common_Block(F, A):
+            return 'USE_RED'
+        elif In_Common_Block(F, B):
+            return 'USE_BLUE'
+        else:
+            return 'USE_RED_OR_BLUE' 
+    if (not In_Common_Block(F, A)
+        and not In_Common_Block(F, A) ):
+        return 'USE_RED_OR_BLUE'
 
-Select_Alternates_Proxy_Node(S, P, F, primary_intf)
-   if (F is not P.neighbor_A)
-      return Select_Alternates_Internal(S, P, F, primary_intf,
-                                        P.neighbor_B.lower, 
-                                        P.neighbor_A.higher, 
-                                        P.neighbor_A.topo_order)
-   else 
-      return Select_Alternates_Internal(S, P, F, primary_intf,
-                                        P.neighbor_B.lower, 
-                                        P.neighbor_A.higher, 
-                                        P.neighbor_B.topo_order)
+    alt_to_X = Select_Alternates(X, F, primary_intf)
+    alt_to_Y = Select_Alternates(Y, F, primary_intf)
+
+    if (alt_to_X == 'USE_RED_OR_BLUE'
+        and alt_to_Y == 'USE_RED_OR_BLUE'):
+        return 'USE_RED_OR_BLUE'
+    if alt_to_X == 'USE_RED_OR_BLUE':
+        return 'USE_BLUE'
+    if alt_to_Y == 'USE_RED_OR_BLUE':
+        return 'USE_RED'
+    
+    if (A is S.localroot 
+        and B is S.localroot):
+        #print("1.0")
+        if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+            return 'USE_RED_OR_BLUE'
+        if alt_to_X == 'USE_BLUE':
+            return 'USE_BLUE'
+        if alt_to_Y == 'USE_RED':
+            return 'USE_RED'
+        assert(False)
+    if (A is S.localroot 
+        and B is not S.localroot):
+        #print("2.0")
+        if B.LOWER:
+            #print("2.1")
+            if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_BLUE':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)
+        if B.HIGHER:
+            #print("2.2")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_BLUE':
+                return 'USE_RED'
+            assert(False)
+        else:
+            #print("2.3")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)       
+    if (A is not S.localroot
+        and B is S.localroot):
+        #print("3.0")
+        if A.LOWER:
+            #print("3.1")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_BLUE':
+                return 'USE_RED'
+            assert(False)        
+        if A.HIGHER:
+            #print("3.2")
+            if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_BLUE':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)
+        else:
+            #print("3.3")
+            if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_RED'):
+                return 'USE_RED_OR_BLUE'
+            if alt_to_X == 'USE_RED':
+                return 'USE_BLUE'
+            if alt_to_Y == 'USE_RED':
+                return 'USE_RED'
+            assert(False)  
+    if (A is not S.localroot
+        and B is not S.localroot):
+        #print("4.0")
+        if (S is A.localroot or S is B.localroot):
+            #print("4.05")
+            if A.topo_order < B.topo_order:
+                #print("4.05.1")
+                if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_BLUE':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_RED':
+                    return 'USE_RED'
+                assert(False)
+            else:
+                #print("4.05.2")
+                if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_RED':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_BLUE':
+                    return 'USE_RED'
+                assert(False)   
+        if A.LOWER:
+            #print("4.1")
+            if B.HIGHER:
+                #print("4.1.1")
+                if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_RED':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_BLUE':
+                    return 'USE_RED'
+                assert(False)                 
+            if B.LOWER:
+                #print("4.1.2")
+                if A.topo_order < B.topo_order:
+                    #print("4.1.2.1")
+                    if (alt_to_X == 'USE_BLUE' 
+                        and alt_to_Y == 'USE_RED'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_BLUE':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_RED':
+                        return 'USE_RED'
+                    assert(False)
+                else:
+                    #print("4.1.2.2")
+                    if (alt_to_X == 'USE_RED' 
+                        and alt_to_Y == 'USE_BLUE'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_RED':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_BLUE':
+                        return 'USE_RED'
+                    assert(False)  
+            else:
+                #print("4.1.3")
+                if (F.LOWER and not F.HIGHER
+                    and F.topo_order > A.topo_order):
+                    #print("4.1.3.1")
+                    return 'USE_RED'
+                else:
+                    #print("4.1.3.2")
+                    return 'USE_BLUE'        
+        if A.HIGHER:
+            #print("4.2")
+            if B.HIGHER:
+                #print("4.2.1")
+                if A.topo_order < B.topo_order:
+                    #print("4.2.1.1")
+                    if (alt_to_X == 'USE_BLUE' 
+                        and alt_to_Y == 'USE_RED'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_BLUE':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_RED':
+                        return 'USE_RED'
+                    assert(False)
+                else:
+                    #print("4.2.1.2")
+                    if (alt_to_X == 'USE_RED' 
+                        and alt_to_Y == 'USE_BLUE'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_RED':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_BLUE':
+                        return 'USE_RED'
+                    assert(False)
+            if B.LOWER:
+                #print("4.2.2")
+                if (alt_to_X == 'USE_BLUE' 
+                    and alt_to_Y == 'USE_RED'):
+                    return 'USE_RED_OR_BLUE'
+                if alt_to_X == 'USE_BLUE':
+                    return 'USE_BLUE'
+                if alt_to_Y == 'USE_RED':
+                    return 'USE_RED'
+                assert(False)      
+            else:
+                #print("4.2.3")
+                if (F.HIGHER and not F.LOWER
+                    and F.topo_order < A.topo_order):
+                    return 'USE_RED'
+                else:
+                    return 'USE_BLUE'                                
+        else:
+            #print("4.3")
+            if B.LOWER:
+                #print("4.3.1")
+                if (F.LOWER and not F.HIGHER
+                    and F.topo_order > B.topo_order):
+                    return 'USE_BLUE'
+                else:
+                    return 'USE_RED'
+            if B.HIGHER:
+                #print("4.3.2")
+                if (F.HIGHER and not F.LOWER
+                    and F.topo_order < B.topo_order):
+                    return 'USE_BLUE'
+                else:
+                    return 'USE_RED'
+            else:
+                #print("4.3.3")
+                if A.topo_order < B.topo_order:
+                    #print("4.3.3.1")
+                    if (alt_to_X == 'USE_BLUE' 
+                        and alt_to_Y == 'USE_RED'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_BLUE':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_RED':
+                        return 'USE_RED'
+                    assert(False)
+                else:
+                    #print("4.3.3.2")
+                    if (alt_to_X == 'USE_RED' 
+                        and alt_to_Y == 'USE_BLUE'):
+                        return 'USE_RED_OR_BLUE'
+                    if alt_to_X == 'USE_RED':
+                        return 'USE_BLUE'
+                    if alt_to_Y == 'USE_BLUE':
+                        return 'USE_RED'
+                    assert(False)                 
+    assert(False)
 ]]></artwork>
 </figure>
+
+<t>Select_Alternates_Proxy_Node(P,F,primary_intf) determines whether it is 
+safe to use the blue path to P (which goes through X), the red path to P 
+(which goes through Y), or either, when the primary_intf to node F (and 
+possibly node F) fails. The basic approach is to run 
+Select_Alternates(X,F,primary_intf) and 
+Select_Alternates(Y,F,primary_intf) to determine which of the two MRT 
+paths to X and which of the two MRT paths to Y is safe to use in the 
+event of the failure of F.  In general, we will find that if it is 
+safe to use a particular path to X or Y when F fails, and 
+Select_Proxy_Node_NHs() used that path when constructing the red or blue 
+path to reach P, then it will also be safe to use that path to reach P
+when F fails.  This rule has one exception which is covered below.
+First, we give a concrete example of how Select_Alternates_Proxy_Node()
+works in the common case.</t>
+
+<t> The twenty one ordering relationships used in 
+Select_Proxy_Node_NHs() are repeated in Select_Alternates_Proxy_Node(). 
+We focus on case 4.1.1 to give give a detailed example of the reasoning 
+used in Select_Alternates_Proxy_Node(). In Select_Proxy_Node_NHs(), we 
+determined for case 4.1.1 that the red next-hops to X and the blue 
+next-hops to Y allow us to reach X and Y by disjoint paths, and are thus 
+the blue and red next-hops to reach P. Therefore, if we run 
+Select_Alternates(X, F, primary_intf) and we find that it is safe to 
+USE_RED to reach X, then we also conclude that it is safe to use the MRT 
+path through X to reach P (the blue path to P) when F fails. Similarly, 
+if run Select_Alternates(X, F, primary_intf) and we find that it is safe 
+to USE_BLUE to reach Y, then we also conclude that it is safe to use the 
+MRT path through Y to reach P (the red path to P) when F fails. If both 
+of the paths that were used in Select_Proxy_Node_NHs() to construct the 
+blue and red paths to P are found to be safe to use to use to reach X 
+and Y, t then we conclude that we can use either the red or the blue 
+path to P.</t> 
+
+<t> This simple reasoning gives the correct answer in most of the cases. 
+However, additional logic is needed when either A or B (but not both A 
+and B) is unordered with respect to S. This applies to cases 4.1.3, 
+4.2.3, 4.3.1, and 4.3.2. Looking at case 4.1.3 in more detail, A is 
+ordered less than S, but B is unordered with respect to S. In the 
+discussion of case 4.1.3 above, we saw that Select_Proxy_Node_NHs() 
+chose the red path to reach Y and the red path to reach X. We also saw 
+that the red path to reach Y will follow the INCREASING next-hops 
+towards the localroot until it reaches some node (L) which is ordered 
+greater than B, after which it will take DECREASING next-hops to B. The 
+problem is that the red path to reach P (the one that goes through Y) 
+won't necessarily be the same as the red path to reach Y. This is 
+because the next-hop that node L computes for its red next-hop to reach 
+P may be different from the next-hop it computes for its red next-hop to 
+reach Y. This is because B is ordered lower than L, so L applies case 
+4.1.2 of Select_Proxy_Node_NHs() in order to determine its next-hops to 
+reach P. If A.topo_order&lt;B.topo_order (case 4.1.2.1), then L will 
+choose DECREASING next-hops directly to B, which is the same result that 
+L computes in Compute_MRT_NextHops() to reach Y. However, if 
+A.topo_order&gt;B.topo_order (case 4.1.2.2), then L will choose 
+INCREASING next-hops to reach B, which is different from what L computes 
+in Compute_MRT_NextHops() to reach Y. So testing the safety of the path 
+for S to reach Y on failure of F as a surrogate for the safety of using 
+the red path to reach P is not reliable in this case. It is possible 
+construct topologies where the red path to P hits F even though the red 
+path to Y does not hit F.</t> 
+
+
+<t> Fortunately there is enough information in the order relationships 
+that we have already computed to still figure out which alternate to 
+choose in these four cases.  The basic idea is to always choose the
+path involving the ordered node, unless that path would hit F. 
+Returning to case 4.1.3, we see that since A is ordered lower than S,
+the only way for S to hit F using a simple DECREASING path to A is for
+F to lie between A and S on the GADAG.  This scenario is covered by 
+requiring that F be lower than S (but not also higher than S) and 
+that F.topo_order&gt;A.topo_order in case 4.1.3.1.</t> 
+
+<t> We just need to confirm that it is safe to use the path involving B 
+in this scenario. In case 4.1.3.1, either F is between A and S on the 
+GADAG, or F is unordered with respect to A and lies on the DECREASING 
+path from S to the localroot. When F is between A and S on the GADAG, 
+then the path through B chosen to avoid A in Select_Proxy_Node_NHs() 
+will also avoid F. When F is unordered with respect to A and lies on the 
+DECREASING path from S to the localroot, then we consider two cases. 
+Either F.topo_order&lt;B.topo_order or F.topo_order&gt;B.topo_order. In 
+the first case, since F.topo_order&lt;B.topo_order and 
+F.topo_order&gt;A.topo_order, it must be the case that 
+A.topo_order&lt;B.topo_order. Therefore, L will choose DECREASING 
+next-hops directly to B (case 4.1.2.1), which cannot hit F since 
+F.topo_order&lt;B.topo_order. In the second case, where 
+F.topo_order&gt;B.topo_order, the only way for the path involving B to 
+hit F is if it DECREASES from L to B through F , ie. it must be that 
+L&gt;&gt;F&gt;&gt;B. However, since S&gt;&gt;F, this would imply that 
+S&gt;&gt;B. However, we know that S is unordered with respect to B, so 
+the second case cannot occur. So we have demonstrated that the red path
+to P (which goes via B and Y) is safe to use under the conditions of
+4.1.3.1.  Similar reasoning can be applied to the other three special
+cases where either A or B is unordered with respect to S.</t> 
 
 </section>
 
@@ -2441,8 +3058,7 @@ not require coordination with other nodes. </t>
 specified in this document.  In order to avoid the page breaks
 in the .txt version of the draft, one can cut and paste the 
 Python code from the .xml version.  The code is also posted 
-on Github.
-</t>
+on Github. </t>
 
 <figure>
 <artwork align="left"><![CDATA[
@@ -2519,7 +3135,7 @@ class Interface:
         self.area = None
         self.MRT_INELIGIBLE = False
         self.IGP_EXCLUDED = False
-        self.STORED_OUTGOING = False
+        self.SIMULATION_OUTGOING = False
         self.init_new_computing_router()
     def init_new_computing_router(self):
         self.UNDIRECTED = True
@@ -2664,10 +3280,12 @@ def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
     while explore_list != []:
         next_rtr = explore_list.pop()
         for intf in next_rtr.intf_list:
-            if ( not intf.MRT_INELIGIBLE and not intf.IGP_EXCLUDED 
-                 and intf.area == area ):
+            if ( (not intf.MRT_INELIGIBLE)
+                 and (not intf.remote_intf.MRT_INELIGIBLE)
+                 and (not intf.IGP_EXCLUDED) and intf.area == area ):
                 if (profile_id in intf.remote_node.profile_id_list):
                     intf.IN_MRT_ISLAND = True
+                    intf.remote_intf.IN_MRT_ISLAND = True
                     if (not intf.remote_node.IN_MRT_ISLAND):
                         intf.remote_node.IN_MRT_ISLAND = True
                         explore_list.append(intf.remote_node)
@@ -3152,7 +3770,9 @@ def Select_Alternates_Internal(D, F, primary_intf,
             return 'USE_RED'
         if F.LOWER:
             return 'USE_BLUE'
-        assert(False)   
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        return 'USE_RED_OR_BLUE'
     if D_higher:
         if F.HIGHER and F.LOWER:
             return 'USE_BLUE'
@@ -3163,8 +3783,10 @@ def Select_Alternates_Internal(D, F, primary_intf,
                 return 'USE_BLUE'
             if (F.topo_order < D_topo_order):
                 return 'USE_RED'
-            assert(False) 
-        assert(False) 
+            assert(False)
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        return 'USE_RED_OR_BLUE'
     if D_lower:
         if F.HIGHER and F.LOWER:
             return 'USE_RED'
@@ -3176,7 +3798,9 @@ def Select_Alternates_Internal(D, F, primary_intf,
             if F.topo_order < D_topo_order:
                 return 'USE_RED'
             assert(False)        
-        assert(False)
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        return 'USE_RED_OR_BLUE'
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
@@ -3188,14 +3812,29 @@ def Select_Alternates_Internal(D, F, primary_intf,
                 return 'USE_BLUE'
             if primary_intf.INCOMING:
                 return 'USE_RED'
-            assert(False)
+            #This can occur when primary_intf is MRT_INELIGIBLE.
+            #This appears to be a case where the special 
+            #construction of the GADAG allows us to choose red,
+            #whereas with an arbitrary GADAG, neither red nor blue
+            #is guaranteed to work.  
+            assert(primary_intf.MRT_INELIGIBLE 
+                   or primary_intf.remote_intf.MRT_INELIGIBLE)
+            return 'USE_RED'
         if F.LOWER:
             return 'USE_RED'
         if F.HIGHER:
             return 'USE_BLUE'
-        assert(False)
-            
+        assert(primary_intf.MRT_INELIGIBLE 
+               or primary_intf.remote_intf.MRT_INELIGIBLE)
+        if F.topo_order > D_topo_order:
+            return 'USE_BLUE'
+        else:
+            return 'USE_RED'
+
 def Select_Alternates(D, F, primary_intf):
+    S = primary_intf.local_node
+    if not In_Common_Block(F, S):
+        return 'PRIM_NH_IN_DIFFERENT_BLOCK'
     if (D is F) or (D.order_proxy is F):
         return 'PRIM_NH_IS_D_OR_OP_FOR_D'
     D_lower = D.order_proxy.LOWER
@@ -3203,6 +3842,13 @@ def Select_Alternates(D, F, primary_intf):
     D_topo_order = D.order_proxy.topo_order
     return Select_Alternates_Internal(D, F, primary_intf,
                                       D_lower, D_higher, D_topo_order)
+
+
+def Is_Remote_Node_In_NH_List(node, intf_list):
+    for intf in intf_list:
+        if node is intf.remote_node:
+            return True
+    return False
 
 def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
     Normal_SPF(topo, x)
@@ -3214,10 +3860,12 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
             alt = Alternate()
             alt.failed_intf = failed_intf
             cand_alt_list = []                
-                
-            if failed_intf in x.island_intf_list:
-                alt.info = Select_Alternates(D,
-                    failed_intf.remote_node, failed_intf)
+            F = failed_intf.remote_node   
+            #We need to test if F is in the island, as opposed
+            #to just testing if failed_intf is in island_intf_list,
+            #because failed_intf could be marked as MRT_INELIGIBLE.
+            if F in topo.island_node_list:
+                alt.info = Select_Alternates(D, F, failed_intf)
             else:
                 #The primary next-hop is not in the MRT Island. 
                 #Either red or blue will avoid the primary next-hop,
@@ -3236,6 +3884,9 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                 Copy_List_Items(alt.nh_list, D.red_next_hops)
                 alt.fec = 'RED'
                 alt.prot = 'NODE_PROTECTION'
+            if (alt.info == 'PRIM_NH_IN_DIFFERENT_BLOCK'):
+                alt.fec = 'NO_ALTERNATE'
+                alt.prot = 'NO_PROTECTION'
             if (alt.info == 'PRIM_NH_IS_D_OR_OP_FOR_D'):
                 if failed_intf.OUTGOING and failed_intf.INCOMING:
                     # cut-link: if there are parallel cut links, use
@@ -3259,21 +3910,38 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                         alt.fec = 'NO_ALTERNATE'
                         alt.prot = 'NO_PROTECTION'
                     Copy_List_Items(alt.nh_list, cand_alt_list)
-                elif failed_intf in D.red_next_hops:
+                
+                # Use Is_Remote_Node_In_NH_List() is used, as opposed
+                # to just checking if failed_intf is in D.red_next_hops,
+                # because failed_intf could be marked as MRT_INELIGIBLE.
+                elif Is_Remote_Node_In_NH_List(F, D.red_next_hops):
                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
                     alt.fec = 'BLUE'
                     alt.prot = 'LINK_PROTECTION'
                 else:
+                    if not Is_Remote_Node_In_NH_List(F, D.blue_next_hops):
+                        print("WEIRD behavior")
                     Copy_List_Items(alt.nh_list, D.red_next_hops)
                     alt.fec = 'RED'
                     alt.prot = 'LINK_PROTECTION'
+                  
+                # working version but has issue with MRT_INELIGIBLE link being
+                # primary_NH  
+#                 elif failed_intf in D.red_next_hops:
+#                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
+#                     alt.fec = 'BLUE'
+#                     alt.prot = 'LINK_PROTECTION'
+#                 else:
+#                     Copy_List_Items(alt.nh_list, D.red_next_hops)
+#                     alt.fec = 'RED'
+#                     alt.prot = 'LINK_PROTECTION'
             D.alt_list.append(alt)
 
 def Write_GADAG_To_File(topo, file_prefix):
     gadag_edge_list = []
     for node in topo.node_list:
         for intf in node.intf_list:
-            if intf.STORED_OUTGOING:
+            if intf.SIMULATION_OUTGOING:
                 local_node =  "%04d" % (intf.local_node.node_id)
                 remote_node = "%04d" % (intf.remote_node.node_id)
                 intf_data = "%03d" % (intf.link_data)
@@ -3974,15 +4642,13 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                     assert(False)  
             else:
                 #print("4.1.3")
-                if (alt_to_X == 'USE_RED' 
-                    and alt_to_Y == 'USE_RED'):
-                    # Special Case:   
-                    return 'USE_BLUE'              
-                if alt_to_X == 'USE_RED':
-                    return 'USE_BLUE'
-                if alt_to_Y == 'USE_RED':
+                if (F.LOWER and not F.HIGHER
+                    and F.topo_order > A.topo_order):
+                    #print("4.1.3.1")
                     return 'USE_RED'
-                assert(False)  
+                else:
+                    #print("4.1.3.2")
+                    return 'USE_BLUE'        
         if A.HIGHER:
             #print("4.2")
             if B.HIGHER:
@@ -4019,39 +4685,27 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 assert(False)      
             else:
                 #print("4.2.3")
-                if (alt_to_X == 'USE_BLUE' 
-                    and alt_to_Y == 'USE_BLUE'):
-                    # Special Case:
-                    return 'USE_BLUE'
-                if alt_to_X == 'USE_BLUE':
-                    return 'USE_BLUE'
-                if alt_to_Y == 'USE_BLUE':
+                if (F.HIGHER and not F.LOWER
+                    and F.topo_order < A.topo_order):
                     return 'USE_RED'
-                assert(False)                      
+                else:
+                    return 'USE_BLUE'                                
         else:
             #print("4.3")
             if B.LOWER:
                 #print("4.3.1")
-                if (alt_to_X == 'USE_RED' 
-                    and alt_to_Y == 'USE_RED'):
-                    # Special Case:
+                if (F.LOWER and not F.HIGHER
+                    and F.topo_order > B.topo_order):
+                    return 'USE_BLUE'
+                else:
                     return 'USE_RED'
-                if alt_to_X == 'USE_RED':
-                    return 'USE_BLUE'  
-                if (alt_to_Y == 'USE_RED'):
-                    return 'USE_RED'
-                assert(False)
             if B.HIGHER:
                 #print("4.3.2")
-                if (alt_to_X == 'USE_BLUE' 
-                    and alt_to_Y == 'USE_BLUE'):
-                    # Special Case:
-                    return 'USE_RED'
-                if alt_to_X == 'USE_BLUE':
+                if (F.HIGHER and not F.LOWER
+                    and F.topo_order < B.topo_order):
                     return 'USE_BLUE'
-                if alt_to_Y == 'USE_BLUE':
+                else:
                     return 'USE_RED'
-                assert(False)  
             else:
                 #print("4.3.3")
                 if A.topo_order < B.topo_order:
@@ -4212,7 +4866,9 @@ def Store_GADAG_and_Named_Proxies_Once(topo):
     for node in topo.node_list:
         for intf in node.intf_list:
             if intf.OUTGOING:
-                intf.STORED_OUTGOING = True
+                intf.SIMULATION_OUTGOING = True
+            else:
+                intf.SIMULATION_OUTGOING = False
     for prefix in topo.named_proxy_dict:
         P = topo.named_proxy_dict[prefix]
         topo.stored_named_proxy_dict[prefix] = P
@@ -4883,7 +5539,7 @@ details on implementation status.</t>
   <t>The authors would like to thank Shraddha Hegde for her
   suggestions and review.  We would also like to thank Anil Kumar SN 
   for his assistance in clarifying the algorithm description and
-  pseudocode.</t>
+  pseudo-code.</t>
 
 </section>
 
