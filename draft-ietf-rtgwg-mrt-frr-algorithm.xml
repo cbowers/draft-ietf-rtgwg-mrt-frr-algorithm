@@ -5536,8 +5536,9 @@ details on implementation status.</t>
 
 <section anchor="Acknowledgements" title="Acknowledgements">
 
-  <t>The authors would like to thank Shraddha Hegde for her
-  suggestions and review.  We would also like to thank Anil Kumar SN 
+  <t>The authors would like to thank Shraddha Hegde, 
+  Eric Wu, and Janos Farkas for their 
+  suggestions and review.  We would also like to thank Anil Kumar SN
   for his assistance in clarifying the algorithm description and
   pseudo-code.</t>
 
