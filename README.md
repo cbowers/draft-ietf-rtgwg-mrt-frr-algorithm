@@ -1,4 +1,4 @@
-# draft-ietf-rtgwg-mrt-frr-alogorithm
+# draft-ietf-rtgwg-mrt-frr-algorithm
 This is the XML source for https://datatracker.ietf.org/doc/draft-ietf-rtgwg-mrt-frr-algorithm/
 
 Look at http://cbowers.github.io/mrt-examples/graph.html for visualizations of Maximally Redundant Trees.
