@@ -2200,7 +2200,7 @@ require the localroot to have two incoming links in the GADAG, which
 cannot happen.) Therefore it is safe to use the red path to avoid F with 
 these specially constructed GADAGs. </t> 
 
-<t>As an example of how to Select_Alternates_Internal() operates,
+<t>As an example of how Select_Alternates_Internal() operates,
 consider the ADAG depicted in <xref 
 target="ADAG-for-nh-sel"/> and first suppose that G is the source, D is 
 the destination and H is the failed next-hop. Since D&gt;&gt;G, we need 
@@ -2231,23 +2231,139 @@ first decreasing then increasing, path is selected.</t>
 
 </section>
 
-<section anchor="sec_proxy_nodes" title="Finding MRT Next-Hops for Proxy-Nodes">
+<section anchor="sec_proxy_nodes" title="Named Proxy-Nodes">
 
 <t>As discussed in Section 11.2 of <xref
 target="I-D.ietf-rtgwg-mrt-frr-architecture"/>, it is necessary to
-find MRT-Blue and MRT-Red next-hops and MRT-FRR alternates for a named
+find MRT-Blue and MRT-Red next-hops and MRT-FRR alternates for named
 proxy-nodes. An example use case is for a router that is not part of that
 local MRT Island, when there is only partial MRT support in the
 domain.</t>
 
-<t>The proxy-node is connected to at most two nodes in the GADAG.
-Section 11.2 of <xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/>
-defines how the proxy-node attachment routers MUST be determined.  The
+<section anchor="sec_pnar" title="Determining Proxy-Node Attachment Routers">
+<t> Section 11.2 of <xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/> 
+discusses general considerations for determining the two proxy-node 
+attachment routers for a given proxy-node, corresponding to a prefix. A 
+router in the MRT Island that advertises the prefix is a candidate for 
+being a proxy-node attachment router, with the associated 
+named-proxy-cost equal to the advertised cost to the prefix. </t> 
+
+<t> An Island Border Router (IBR) is a router in the MRT Island that is 
+connected to an Island Neighbor(IN), which is a router not in the MRT 
+Island but in the same area/level. An (IBR,IN) pair is a candidate for 
+being a proxy-node attachment router, if the shortest path from the IN 
+to the prefix does not enter the MRT Island. A method for identifying 
+such loop-free Island Neighbors(LFINs) is given below. The 
+named-proxy-cost assigned to each (IBR, IN) pair is cost(IBR, IN) + 
+D_opt(IN, prefix).</t> 
+
+
+
+<t>From the set of prefix-advertising routers and the set of IBRs with
+at least one LFIN, the two routers with the lowest named-proxy-cost
+are selected.  Ties are broken based upon the lowest Router ID.  For
+ease of discussion, the two selected routers will be referred to as
+proxy-node attachment routers.</t>
+
+
+</section>
+
+<section title="Computing if an Island Neighbor (IN) is loop-free">
+
+<t>As discussed above, the Island Neighbor needs to be loop-free with 
+respect to the whole MRT Island for the destination. This can be 
+accomplished by running the usual SPF algorithm while keeping track of 
+which shortest paths have passed through the MRT island. Pseudo-code for 
+this is shown in <xref target="fig_island_marking_spf"/>. The 
+Island_Marking_SPF() is run for each IN that needs to be evaluated for 
+the loop-free condition, with the IN as the spf_root. Whether or not an 
+IN is loop-free with respect to the MRT island can then be determined by 
+evaluating node.PATH_HITS_ISLAND for each destination of interest.</t> 
+
+<figure anchor="fig_island_marking_spf" align="center"
+title = "Island_Marking_SPF for determining if an Island Neighbor is loop-free ">
+<artwork align="center"><![CDATA[
+Island_Marking_SPF(spf_root)
+    Initialize spf_heap to empty
+    Initialize nodes' spf_metric to infinity and next_hops to empty
+        and PATH_HITS_ISLAND to false
+    spf_root.spf_metric = 0
+    insert(spf_heap, spf_root)
+    while (spf_heap is not empty)
+        min_node = remove_lowest(spf_heap)
+        foreach interface intf of min_node
+            path_metric = min_node.spf_metric + intf.metric
+            if path_metric < intf.remote_node.spf_metric
+                intf.remote_node.spf_metric = path_metric
+                if min_node is spf_root
+                    intf.remote_node.next_hops = make_list(intf)
+                else
+                    intf.remote_node.next_hops = min_node.next_hops
+                if intf.remote_node.IN_MRT_ISLAND
+                    intf.remote_node.PATH_HITS_ISLAND = true
+                else
+                    intf.remote_node.PATH_HITS_ISLAND =
+                        min_node.PATH_HITS_ISLAND
+                insert_or_update(spf_heap, intf.remote_node)
+            else if path_metric == intf.remote_node.spf_metric
+                if min_node is spf_root
+                    add_to_list(intf.remote_node.next_hops, intf)
+                else
+                    add_list_to_list(intf.remote_node.next_hops,
+                                     min_node.next_hops)
+                if intf.remote_node.IN_MRT_ISLAND
+                    intf.remote_node.PATH_HITS_ISLAND = true
+                else
+                    intf.remote_node.PATH_HITS_ISLAND =
+                        min_node.PATH_HITS_ISLAND
+]]></artwork>
+</figure>
+
+<t>It is also possible that a given prefix is originated by a 
+combination of non-island routers and island routers. The results of the 
+Island_Marking_SPF computation can be used to determine if the shortest 
+path from an IN to reach that prefix hits the MRT island. The shortest 
+path for the IN to reach prefix P is determined by the total cost to 
+reach prefix P, which is the sum of the cost for the IN to reach a 
+prefix-advertising node and the cost with which that node advertises the 
+prefix. The path with the minimum total cost to prefix P is chosen. If 
+the prefix-advertising node for that minimum total cost path has 
+PATH_HITS_ISLAND set to True, then the IN is not loop-free with respect 
+to the MRT Island for reaching prefix P. If there multiple minimum total 
+cost paths to reach prefix P, then all of the prefix-advertising routers 
+involved in the minimum total cost paths MUST have PATH_HITS_ISLAND set 
+to False for the IN to be considered loop-free to reach P. </t> 
+
+<t>Note that there are other computations that could be used to 
+determine if paths from a given IN _might_ pass through the MRT Island 
+for a given prefix or destination. For example, a previous version of 
+this draft specified running the SPF algorithm on modified topology 
+which treats the MRT island as a single node (with intra-island links 
+set to zero cost) in order to provide input to computations to determine 
+if the path from IN to non-island destination hits the MRT island in 
+this modified topology. This computation is enough to guarantee that a 
+path will not hit the MRT island in the original topology. However, it 
+is possible that a path which is disqualified for hitting the MRT island 
+in the modified topology will not actually hit the MRT Island in the 
+original topology. The algorithm described in Island_Marking_SPF() above 
+does not modify the original topology, and will only disqualify a path 
+if the actual path does in fact hit the MRT island. </t> 
+
+<t>Since all routers need to come to the same conclusion about which 
+routers qualify as LFINs, this specification requires that all routers 
+computing LFINs MUST use an algorithm whose result is identical to that 
+of the Island_Marking_SPF() in <xref target="fig_island_marking_spf"/>. 
+</t> 
+
+</section>
+
+<section anchor="sec_proxy_node_nhs" title="Computing MRT Next-Hops for Proxy-Nodes">
+<t>Determining the MRT next-hops for a proxy-node in the
 degenerate case where the proxy-node is attached to only one node in
-the GADAG is trivial as all needed information can be derived from
+the GADAG is trivial, as all needed information can be derived from
 that proxy node attachment router.  If there are multiple interfaces
 connecting the proxy node to the single proxy node attachment router,
-then some canbe assigned to MRT-Red and others to MRT_Blue.</t>
+then some can be assigned to MRT-Red and others to MRT_Blue.</t>
 
 <t>Now, consider the proxy-node P that is attached to two proxy-node 
 attachment routers. The pseudo-code for Select_Proxy_Node_NHs(P,S) in 
@@ -2532,6 +2648,9 @@ must have at least two incoming links from different nodes in the same
 block in the GADAG. This in turn allows Select_Proxy_Node_NHs() to 
 choose the red path to Y and the red path to X as the disjoint MRT paths 
 to reach P.</t> 
+</section>
+
+<section anchor="sec_proxy_node_alts" title="Computing MRT Alternates for Proxy-Nodes">
 
 <t> After finding the red and the blue next-hops for a given proxy-node 
 P, it is necessary to know which one of these to use in the case of 
@@ -2886,6 +3005,8 @@ the second case cannot occur. So we have demonstrated that the red path
 to P (which goes via B and Y) is safe to use under the conditions of
 4.1.3.1.  Similar reasoning can be applied to the other three special
 cases where either A or B is unordered with respect to S.</t> 
+
+</section>
 
 </section>
 
