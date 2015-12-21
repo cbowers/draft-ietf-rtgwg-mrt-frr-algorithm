@@ -54,7 +54,7 @@ class Topology:
         self.init_new_computing_router()
     def init_new_computing_router(self):
         self.island_node_list = []
-        self.named_proxy_dict = {}
+        self.named_proxy_dict = {}   
         
 class Node:
     def __init__(self):
@@ -67,7 +67,7 @@ class Node:
         self.blue_to_green_nh_dict = {}
         self.red_to_green_nh_dict = {}
         self.prefix_cost_dict = {}
-        self.pnh_dict = {}
+        self.pnh_dict = {} 
         self.alt_dict = {}
         self.init_new_computing_router()
     def init_new_computing_router(self):        
@@ -242,13 +242,13 @@ def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
         for intf in next_rtr.intf_list:
             if ( (not intf.MRT_INELIGIBLE)
                  and (not intf.remote_intf.MRT_INELIGIBLE)
-                 and (not intf.IGP_EXCLUDED) and intf.area == area ):
-                if (profile_id in intf.remote_node.profile_id_list):
-                    intf.IN_MRT_ISLAND = True
-                    intf.remote_intf.IN_MRT_ISLAND = True
-                    if (not intf.remote_node.IN_MRT_ISLAND):
-                        intf.remote_node.IN_MRT_ISLAND = True
-                        explore_list.append(intf.remote_node)
+                 and (not intf.IGP_EXCLUDED) and intf.area == area 
+                 and (profile_id in intf.remote_node.profile_id_list)):
+                intf.IN_MRT_ISLAND = True
+                intf.remote_intf.IN_MRT_ISLAND = True
+                if (not intf.remote_node.IN_MRT_ISLAND):
+                    intf.remote_node.IN_MRT_ISLAND = True
+                    explore_list.append(intf.remote_node)
 
 def Compute_Island_Node_List_For_Test_GR(topo, test_gr):
     Reset_Computed_Node_and_Intf_Values(topo)
@@ -764,9 +764,7 @@ def Select_Alternates_Internal(D, F, primary_intf,
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
-                # This can happen when the primary next hop goes
-                # to a node in a different block and D is 
-                # unordered wrt S.  
+                # This can happen when F and D are in different blocks
                 return 'USE_RED_OR_BLUE'
             if primary_intf.OUTGOING:
                 return 'USE_BLUE'
@@ -871,30 +869,21 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                         alt.prot = 'NO_PROTECTION'
                     Copy_List_Items(alt.nh_list, cand_alt_list)
                 
-                # Use Is_Remote_Node_In_NH_List() is used, as opposed
+                # Is_Remote_Node_In_NH_List() is used, as opposed
                 # to just checking if failed_intf is in D.red_next_hops,
                 # because failed_intf could be marked as MRT_INELIGIBLE.
                 elif Is_Remote_Node_In_NH_List(F, D.red_next_hops):
                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
                     alt.fec = 'BLUE'
                     alt.prot = 'LINK_PROTECTION'
-                else:
-                    if not Is_Remote_Node_In_NH_List(F, D.blue_next_hops):
-                        print("WEIRD behavior")
+                elif Is_Remote_Node_In_NH_List(F, D.blue_next_hops):
                     Copy_List_Items(alt.nh_list, D.red_next_hops)
                     alt.fec = 'RED'
-                    alt.prot = 'LINK_PROTECTION'
-                  
-                # working version but has issue with MRT_INELIGIBLE link being
-                # primary_NH  
-#                 elif failed_intf in D.red_next_hops:
-#                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
-#                     alt.fec = 'BLUE'
-#                     alt.prot = 'LINK_PROTECTION'
-#                 else:
-#                     Copy_List_Items(alt.nh_list, D.red_next_hops)
-#                     alt.fec = 'RED'
-#                     alt.prot = 'LINK_PROTECTION'
+                    alt.prot = 'LINK_PROTECTION'                    
+                else:
+                    alt.fec = random.choice(['RED','BLUE'])
+                    alt.prot = 'LINK_PROTECTION' 
+                    
             D.alt_list.append(alt)
 
 def Write_GADAG_To_File(topo, file_prefix):
@@ -1965,6 +1954,6 @@ def Generate_Complex_Topology_and_Run_MRT():
     Write_Output_To_Files(topo, res_file_base)
 
 Generate_Basic_Topology_and_Run_MRT()
- 
+   
 Generate_Complex_Topology_and_Run_MRT()
 

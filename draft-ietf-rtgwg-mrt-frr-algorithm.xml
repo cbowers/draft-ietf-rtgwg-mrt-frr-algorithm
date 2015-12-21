@@ -7,18 +7,12 @@
      An alternate method (rfc include) is described in the references. -->
 
 <!ENTITY RFC2119 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2119.xml">
-<!ENTITY RFC6571 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.6571.xml">
-<!ENTITY RFC5714 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5714.xml">
-<!ENTITY RFC5286 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5286.xml">
-<!ENTITY RFC3137 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.3137.xml">
 <!ENTITY RFC5120 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.5120.xml">
 <!ENTITY RFC7490 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.7490.xml">
-<!ENTITY RFC2328 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2327.xml">
+<!ENTITY RFC2328 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2328.xml">
 
 
 <!ENTITY I-D.ietf-rtgwg-lfa-manageability SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-lfa-manageability.xml">
-
-<!ENTITY I-D.ietf-rtgwg-ipfrr-notvia-addresses SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-ipfrr-notvia-addresses.xml">
 
 
 ]>
@@ -50,7 +44,7 @@
 <!-- keep one blank line between list items -->
 <!-- end of list of popular I-D processing instructions -->
 
-<rfc category="std" docName="draft-ietf-rtgwg-mrt-frr-algorithm-06" ipr="trust200902">
+<rfc category="std" docName="draft-ietf-rtgwg-mrt-frr-algorithm-07" ipr="trust200902">
   <!-- category values: std, bcp, info, exp, and historic
      ipr values: full3667, noModification3667, noDerivatives3667
      you can add the attributes updates="NNNN" and obsoletes="NNNN" 
@@ -137,7 +131,7 @@
      </address>
     </author>
 
-    <date day="15" month="October" year="2015"/>
+    <date day="20" month="December" year="2015"/>
 
     <area>Routing</area>
 
@@ -145,9 +139,9 @@
 
     <abstract>
 
-    <t>A complete solution for IP and LDP Fast-Reroute using Maximally
+    <t>A solution for IP and LDP Fast-Reroute using Maximally
     Redundant Trees is presented in
-    [I-D.ietf-rtgwg-mrt-frr-architecture].  This document defines the
+    draft-ietf-rtgwg-mrt-frr-architecture.  This document defines the
     associated MRT Lowpoint algorithm that is used in the default MRT
     profile to compute both the necessary Maximally Redundant Trees
     with their associated next-hops and the alternates to select for
@@ -191,8 +185,8 @@
 
   <t>This document defines an algorithm for selecting an appropriate
   MRT alternate for consideration.  Other alternates, e.g. LFAs that
-  are downstream paths, may be prefered when available and that
-  policy-based alternate selection process<xref
+  are downstream paths, may be preferred when available and that
+  policy-based alternate selection process <xref
   target="I-D.ietf-rtgwg-lfa-manageability"/> is not captured in this
   document.</t>
 
@@ -252,7 +246,7 @@ a 2-connected graph     MRT-Blue towards R          MRT-Red towards R
 <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in <xref
-target="RFC2119"/></t>
+target="RFC2119"/>.</t>
 
 </section>
 
@@ -2395,130 +2389,130 @@ def Select_Proxy_Node_NHs(P,S):
     B = Y.order_proxy
     if (A is S.localroot 
         and B is S.localroot):
-        #print("1.0")
+        // case 1.0
         Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
         Copy_List_Items(P.red_next_hops, Y.red_next_hops)
         return
     if (A is S.localroot 
         and B is not S.localroot):
-        #print("2.0")
+        // case 2.0
         if B.LOWER:
-            #print("2.1")
+            // case 2.1
             Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
             Copy_List_Items(P.red_next_hops, Y.red_next_hops)
             return
         if B.HIGHER:
-            #print("2.2")
+            // case 2.2
             Copy_List_Items(P.blue_next_hops, X.red_next_hops)
             Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
             return
         else:
-            #print("2.3")
+            // case 2.3
             Copy_List_Items(P.blue_next_hops, X.red_next_hops)
             Copy_List_Items(P.red_next_hops, Y.red_next_hops)
             return           
     if (A is not S.localroot
         and B is S.localroot):
-        #print("3.0")
+        // case 3.0
         if A.LOWER:
-            #print("3.1")
+            // case 3.1
             Copy_List_Items(P.blue_next_hops, X.red_next_hops)
             Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
             return            
         if A.HIGHER:
-            #print("3.2")
+            // case 3.2
             Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
             Copy_List_Items(P.red_next_hops, Y.red_next_hops)
             return
         else:
-            #print("3.3")
+            // case 3.3
             Copy_List_Items(P.blue_next_hops, X.red_next_hops)
             Copy_List_Items(P.red_next_hops, Y.red_next_hops)
             return        
     if (A is not S.localroot
         and B is not S.localroot):
-        #print("4.0")
+        // case 4.0
         if (S is A.localroot or S is B.localroot):
-            #print("4.05")
+            // case 4.05
             if A.topo_order < B.topo_order:
-                #print("4.05.1")
+                // case 4.05.1
                 Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.red_next_hops)
                 return
             else:
-                #print("4.05.2")
+                // case 4.05.2
                 Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                 return                                 
         if A.LOWER:
-            #print("4.1")
+            // case 4.1
             if B.HIGHER:
-                #print("4.1.1")
+                // case 4.1.1
                 Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                 return                  
             if B.LOWER:
-                #print("4.1.2")
+                // case 4.1.2
                 if A.topo_order < B.topo_order:
-                    #print("4.1.2.1")
+                    // case 4.1.2.1
                     Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                     Copy_List_Items(P.red_next_hops, Y.red_next_hops)
                     return
                 else:
-                    #print("4.1.2.2")
+                    // case 4.1.2.2
                     Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                     Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                     return                    
             else:
-                #print("4.1.3")
+                // case 4.1.3
                 Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.red_next_hops)
                 return
         if A.HIGHER:
-            #print("4.2")
+            // case 4.2
             if B.HIGHER:
-                #print("4.2.1")
+                // case 4.2.1
                 if A.topo_order < B.topo_order:
-                    #print("4.2.1.1")
+                    // case 4.2.1.1
                     Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                     Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
                     return
                 else:
-                    #print("4.2.1.2")
+                    // case 4.2.1.2
                     Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                     Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                     return                    
             if B.LOWER:
-                #print("4.2.2")
+                // case 4.2.2
                 Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.red_next_hops)   
                 return           
             else:
-                #print("4.2.3")
+                // case 4.2.3
                 Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.blue_next_hops) 
                 return 
         else:
-            #print("4.3")
+            // case 4.3
             if B.LOWER:
-                #print("4.3.1")
+                // case 4.3.1
                 Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.red_next_hops) 
                 return
             if B.HIGHER:
-                #print("4.3.2")
+                // case 4.3.2
                 Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                 Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                 return
             else:
-                #print("4.3.3")
+                // case 4.3.3
                 if A.topo_order < B.topo_order:
-                    #print("4.3.3.1")
+                    // case 4.3.3.1
                     Copy_List_Items(P.blue_next_hops, X.blue_next_hops)
                     Copy_List_Items(P.red_next_hops, Y.red_next_hops)
                     return
                 else:
-                    #print("4.3.3.2")
+                    // case 4.3.3.2
                     Copy_List_Items(P.blue_next_hops, X.red_next_hops)
                     Copy_List_Items(P.red_next_hops, Y.blue_next_hops)
                     return
@@ -2697,7 +2691,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
     
     if (A is S.localroot 
         and B is S.localroot):
-        #print("1.0")
+        // case 1.0
         if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
             return 'USE_RED_OR_BLUE'
         if alt_to_X == 'USE_BLUE':
@@ -2707,9 +2701,9 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
         assert(False)
     if (A is S.localroot 
         and B is not S.localroot):
-        #print("2.0")
+        // case 2.0
         if B.LOWER:
-            #print("2.1")
+            // case 2.1
             if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
                 return 'USE_RED_OR_BLUE'
             if alt_to_X == 'USE_BLUE':
@@ -2718,7 +2712,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 return 'USE_RED'
             assert(False)
         if B.HIGHER:
-            #print("2.2")
+            // case 2.2
             if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
                 return 'USE_RED_OR_BLUE'
             if alt_to_X == 'USE_RED':
@@ -2727,7 +2721,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 return 'USE_RED'
             assert(False)
         else:
-            #print("2.3")
+            // case 2.3
             if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_RED'):
                 return 'USE_RED_OR_BLUE'
             if alt_to_X == 'USE_RED':
@@ -2737,9 +2731,9 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
             assert(False)       
     if (A is not S.localroot
         and B is S.localroot):
-        #print("3.0")
+        // case 3.0
         if A.LOWER:
-            #print("3.1")
+            // case 3.1
             if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
                 return 'USE_RED_OR_BLUE'
             if alt_to_X == 'USE_RED':
@@ -2748,7 +2742,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 return 'USE_RED'
             assert(False)        
         if A.HIGHER:
-            #print("3.2")
+            // case 3.2
             if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
                 return 'USE_RED_OR_BLUE'
             if alt_to_X == 'USE_BLUE':
@@ -2757,7 +2751,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                 return 'USE_RED'
             assert(False)
         else:
-            #print("3.3")
+            // case 3.3
             if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_RED'):
                 return 'USE_RED_OR_BLUE'
             if alt_to_X == 'USE_RED':
@@ -2767,11 +2761,11 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
             assert(False)  
     if (A is not S.localroot
         and B is not S.localroot):
-        #print("4.0")
+        // case 4.0
         if (S is A.localroot or S is B.localroot):
-            #print("4.05")
+            // case 4.05
             if A.topo_order < B.topo_order:
-                #print("4.05.1")
+                // case 4.05.1
                 if (alt_to_X == 'USE_BLUE' and alt_to_Y == 'USE_RED'):
                     return 'USE_RED_OR_BLUE'
                 if alt_to_X == 'USE_BLUE':
@@ -2780,7 +2774,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                     return 'USE_RED'
                 assert(False)
             else:
-                #print("4.05.2")
+                // case 4.05.2
                 if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
                     return 'USE_RED_OR_BLUE'
                 if alt_to_X == 'USE_RED':
@@ -2789,9 +2783,9 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                     return 'USE_RED'
                 assert(False)   
         if A.LOWER:
-            #print("4.1")
+            // case 4.1
             if B.HIGHER:
-                #print("4.1.1")
+                // case 4.1.1
                 if (alt_to_X == 'USE_RED' and alt_to_Y == 'USE_BLUE'):
                     return 'USE_RED_OR_BLUE'
                 if alt_to_X == 'USE_RED':
@@ -2800,9 +2794,9 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                     return 'USE_RED'
                 assert(False)                 
             if B.LOWER:
-                #print("4.1.2")
+                // case 4.1.2
                 if A.topo_order < B.topo_order:
-                    #print("4.1.2.1")
+                    // case 4.1.2.1
                     if (alt_to_X == 'USE_BLUE' 
                         and alt_to_Y == 'USE_RED'):
                         return 'USE_RED_OR_BLUE'
@@ -2812,7 +2806,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                         return 'USE_RED'
                     assert(False)
                 else:
-                    #print("4.1.2.2")
+                    // case 4.1.2.2
                     if (alt_to_X == 'USE_RED' 
                         and alt_to_Y == 'USE_BLUE'):
                         return 'USE_RED_OR_BLUE'
@@ -2822,20 +2816,20 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                         return 'USE_RED'
                     assert(False)  
             else:
-                #print("4.1.3")
+                // case 4.1.3
                 if (F.LOWER and not F.HIGHER
                     and F.topo_order > A.topo_order):
-                    #print("4.1.3.1")
+                    // case 4.1.3.1
                     return 'USE_RED'
                 else:
-                    #print("4.1.3.2")
+                    // case 4.1.3.2
                     return 'USE_BLUE'        
         if A.HIGHER:
-            #print("4.2")
+            // case 4.2
             if B.HIGHER:
-                #print("4.2.1")
+                // case 4.2.1
                 if A.topo_order < B.topo_order:
-                    #print("4.2.1.1")
+                    // case 4.2.1.1
                     if (alt_to_X == 'USE_BLUE' 
                         and alt_to_Y == 'USE_RED'):
                         return 'USE_RED_OR_BLUE'
@@ -2845,7 +2839,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                         return 'USE_RED'
                     assert(False)
                 else:
-                    #print("4.2.1.2")
+                    // case 4.2.1.2
                     if (alt_to_X == 'USE_RED' 
                         and alt_to_Y == 'USE_BLUE'):
                         return 'USE_RED_OR_BLUE'
@@ -2855,7 +2849,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                         return 'USE_RED'
                     assert(False)
             if B.LOWER:
-                #print("4.2.2")
+                // case 4.2.2
                 if (alt_to_X == 'USE_BLUE' 
                     and alt_to_Y == 'USE_RED'):
                     return 'USE_RED_OR_BLUE'
@@ -2865,32 +2859,32 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                     return 'USE_RED'
                 assert(False)      
             else:
-                #print("4.2.3")
+                // case 4.2.3
                 if (F.HIGHER and not F.LOWER
                     and F.topo_order < A.topo_order):
                     return 'USE_RED'
                 else:
                     return 'USE_BLUE'                                
         else:
-            #print("4.3")
+            // case 4.3
             if B.LOWER:
-                #print("4.3.1")
+                // case 4.3.1
                 if (F.LOWER and not F.HIGHER
                     and F.topo_order > B.topo_order):
                     return 'USE_BLUE'
                 else:
                     return 'USE_RED'
             if B.HIGHER:
-                #print("4.3.2")
+                // case 4.3.2
                 if (F.HIGHER and not F.LOWER
                     and F.topo_order < B.topo_order):
                     return 'USE_BLUE'
                 else:
                     return 'USE_RED'
             else:
-                #print("4.3.3")
+                // case 4.3.3
                 if A.topo_order < B.topo_order:
-                    #print("4.3.3.1")
+                    // case 4.3.3.1
                     if (alt_to_X == 'USE_BLUE' 
                         and alt_to_Y == 'USE_RED'):
                         return 'USE_RED_OR_BLUE'
@@ -2900,7 +2894,7 @@ def Select_Alternates_Proxy_Node(P,F,primary_intf):
                         return 'USE_RED'
                     assert(False)
                 else:
-                    #print("4.3.3.2")
+                    // case 4.3.3.2
                     if (alt_to_X == 'USE_RED' 
                         and alt_to_Y == 'USE_BLUE'):
                         return 'USE_RED_OR_BLUE'
@@ -3084,7 +3078,7 @@ node attached to the broadcast network. </t>
 
 <t>It is interesting to note that this issue is not unique to the MRT 
 algorithm, but is also encountered in normal SPF computations for IGPs. 
-Section 16.1.1 of <xref target="RFC2327"/> describes how this is done 
+Section 16.1.1 of <xref target="RFC2328"/> describes how this is done 
 for OSPF. As OSPF runs Dijkstra's algorithm, whenever a shorter path is 
 found reach a real destination node, and the shorter path is one hop 
 from the computing routing, and that one hop is a pseudonode, then the 
@@ -3181,6 +3175,16 @@ in the .txt version of the draft, one can cut and paste the
 Python code from the .xml version.  The code is also posted 
 on Github. </t>
 
+<t>While this Python code is believed to correctly to implement the 
+pseudo-code description of the algorithm, in the event of a difference,
+the pseudo-code description should be considered normative. </t> 
+
+
+
+
+
+
+
 <figure>
 <artwork align="left"><![CDATA[
 <CODE BEGINS>
@@ -3215,7 +3219,7 @@ class Topology:
         self.init_new_computing_router()
     def init_new_computing_router(self):
         self.island_node_list = []
-        self.named_proxy_dict = {}
+        self.named_proxy_dict = {}   
         
 class Node:
     def __init__(self):
@@ -3228,7 +3232,7 @@ class Node:
         self.blue_to_green_nh_dict = {}
         self.red_to_green_nh_dict = {}
         self.prefix_cost_dict = {}
-        self.pnh_dict = {}
+        self.pnh_dict = {} 
         self.alt_dict = {}
         self.init_new_computing_router()
     def init_new_computing_router(self):        
@@ -3403,13 +3407,13 @@ def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
         for intf in next_rtr.intf_list:
             if ( (not intf.MRT_INELIGIBLE)
                  and (not intf.remote_intf.MRT_INELIGIBLE)
-                 and (not intf.IGP_EXCLUDED) and intf.area == area ):
-                if (profile_id in intf.remote_node.profile_id_list):
-                    intf.IN_MRT_ISLAND = True
-                    intf.remote_intf.IN_MRT_ISLAND = True
-                    if (not intf.remote_node.IN_MRT_ISLAND):
-                        intf.remote_node.IN_MRT_ISLAND = True
-                        explore_list.append(intf.remote_node)
+                 and (not intf.IGP_EXCLUDED) and intf.area == area 
+                 and (profile_id in intf.remote_node.profile_id_list)):
+                intf.IN_MRT_ISLAND = True
+                intf.remote_intf.IN_MRT_ISLAND = True
+                if (not intf.remote_node.IN_MRT_ISLAND):
+                    intf.remote_node.IN_MRT_ISLAND = True
+                    explore_list.append(intf.remote_node)
 
 def Compute_Island_Node_List_For_Test_GR(topo, test_gr):
     Reset_Computed_Node_and_Intf_Values(topo)
@@ -3925,9 +3929,7 @@ def Select_Alternates_Internal(D, F, primary_intf,
     else: # D is unordered wrt S
         if F.HIGHER and F.LOWER:
             if primary_intf.OUTGOING and primary_intf.INCOMING:
-                # This can happen when the primary next hop goes
-                # to a node in a different block and D is 
-                # unordered wrt S.  
+                # This can happen when F and D are in different blocks
                 return 'USE_RED_OR_BLUE'
             if primary_intf.OUTGOING:
                 return 'USE_BLUE'
@@ -4032,30 +4034,21 @@ def Select_Alts_For_One_Src_To_Island_Dests(topo,x):
                         alt.prot = 'NO_PROTECTION'
                     Copy_List_Items(alt.nh_list, cand_alt_list)
                 
-                # Use Is_Remote_Node_In_NH_List() is used, as opposed
+                # Is_Remote_Node_In_NH_List() is used, as opposed
                 # to just checking if failed_intf is in D.red_next_hops,
                 # because failed_intf could be marked as MRT_INELIGIBLE.
                 elif Is_Remote_Node_In_NH_List(F, D.red_next_hops):
                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
                     alt.fec = 'BLUE'
                     alt.prot = 'LINK_PROTECTION'
-                else:
-                    if not Is_Remote_Node_In_NH_List(F, D.blue_next_hops):
-                        print("WEIRD behavior")
+                elif Is_Remote_Node_In_NH_List(F, D.blue_next_hops):
                     Copy_List_Items(alt.nh_list, D.red_next_hops)
                     alt.fec = 'RED'
-                    alt.prot = 'LINK_PROTECTION'
-                  
-                # working version but has issue with MRT_INELIGIBLE link being
-                # primary_NH  
-#                 elif failed_intf in D.red_next_hops:
-#                     Copy_List_Items(alt.nh_list, D.blue_next_hops)
-#                     alt.fec = 'BLUE'
-#                     alt.prot = 'LINK_PROTECTION'
-#                 else:
-#                     Copy_List_Items(alt.nh_list, D.red_next_hops)
-#                     alt.fec = 'RED'
-#                     alt.prot = 'LINK_PROTECTION'
+                    alt.prot = 'LINK_PROTECTION'                    
+                else:
+                    alt.fec = random.choice(['RED','BLUE'])
+                    alt.prot = 'LINK_PROTECTION' 
+                    
             D.alt_list.append(alt)
 
 def Write_GADAG_To_File(topo, file_prefix):
@@ -5126,7 +5119,7 @@ def Generate_Complex_Topology_and_Run_MRT():
     Write_Output_To_Files(topo, res_file_base)
 
 Generate_Basic_Topology_and_Run_MRT()
- 
+   
 Generate_Complex_Topology_and_Run_MRT()
 
 <CODE ENDS>]]></artwork>
@@ -5670,7 +5663,12 @@ details on implementation status.</t>
     </section>
 
     <section anchor="Security" title="Security Considerations" >
-      <t>This architecture is not currently believed to introduce new security concerns.</t>
+ <t>The algorithm described in this document does not introduce new 
+security concerns, beyond those already discussed in the document 
+describing the MRT FRR architecture <xref 
+target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.</t> 
+
+
     </section>
 
 </middle>
@@ -5691,23 +5689,18 @@ details on implementation status.</t>
 
     <references title="Normative References">
 
-    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-rtgwg-mrt-frr-architecture-05.xml"?>
+    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-rtgwg-mrt-frr-architecture-07.xml"?>
     &RFC2119;
     </references>
 
     <references title="Informative References">
 	&RFC2328;
-    &RFC3137;
     &RFC5120;
-    &RFC5286;
-    &RFC5714;
     &RFC7490;
-    &I-D.ietf-rtgwg-ipfrr-notvia-addresses;
     &I-D.ietf-rtgwg-lfa-manageability;
-    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-pcr-00.xml"?>
-	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-mrt-00.xml"?>
-	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-mpls-ldp-mrt-00.xml"?>
-	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-ospf-mrt-00.xml"?>	
+    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-pcr-04.xml"?>
+	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-mrt-01.xml"?>
+	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-ospf-mrt-01.xml"?>	
 
     <reference anchor="Kahn_1962_topo_sort"
           target="http://dl.acm.org/citation.cfm?doid=368996.369025">
@@ -5728,35 +5721,6 @@ details on implementation status.</t>
        </front>
         <seriesInfo name="Department of Telecommunications and Media Informatics, Budapest University of Technology and Economics" value="Ph.D. Thesis"/>
         <format type='PDF' target="http://timon.tmit.bme.hu/theses/thesis_book.pdf" />
-      </reference>
-
-    &RFC6571;
-      <reference anchor="LightweightNotVia"
-                 target="http://mycite.omikk.bme.hu/doc/71691.pdf">
-       <front>
-          <title>IP Fast ReRoute: Lightweight Not-Via without Additional Addresses</title>
-    <author fullname="G&aacute;bor S&aacute;ndor Enyedi" initials="G.S.E." surname="Enyedi"/>
-          <author fullname="Gabor Retvari" initials="G.R." surname="Retvari"/>
-          <author fullname="Peter Szilagyi" initials="P.S." surname="Szilagyi"/>
-    <author fullname="Andr&aacute;s Cs&aacute;sz&aacute;r" initials="A.C." surname="Cs&aacute;sz&aacute;r"/>
-          <date year="2009" />
-       </front>
-        <seriesInfo name="Proceedings of IEEE INFOCOM" value=""/>
-        <format type='PDF' target="http://mycite.omikk.bme.hu/doc/71691.pdf"/>
-      </reference>
-
-      <reference anchor="LFARevisited"
-                 target="http://opti.tmit.bme.hu/~tapolcai/papers/retvari2011lfa_infocom.pdf">
-       <front>
-          <title>IP Fast ReRoute: Loop Free Alternates Revisited</title>
-          <author fullname="Gabor Retvari" initials="G.R." surname="Retvari"/>
-          <author fullname="Janos Tapolcai" initials="J.T." surname="Tapolcai"/>
-    <author fullname="G&aacute;bor S&aacute;ndor Enyedi" initials="G.S.E." surname="Enyedi"/>
-    <author fullname="Andr&aacute;s Cs&aacute;sz&aacute;r" initials="A.C." surname="Cs&aacute;sz&aacute;r"/>
-          <date year="2011" />
-        </front>
-        <seriesInfo name="Proceedings of IEEE INFOCOM" value=""/>
-        <format type='PDF' target="http://opti.tmit.bme.hu/~tapolcai/papers/retvari2011lfa_infocom.pdf"/>
       </reference>
 
       <reference anchor="MRTLinear"
