@@ -63,7 +63,7 @@
 
     <!-- Another author who claims to be an editor -->
 
-    <author fullname="G&aacute;bor S&aacute;ndor Enyedi" initials="G.S.E." surname="Enyedi" role="editor">
+    <author fullname="G&aacute;bor S&aacute;ndor Enyedi" initials="G.S.E." surname="Enyedi">
       <organization>Ericsson</organization>
       <address>
         <postal>
@@ -89,7 +89,7 @@
      </address>
     </author>
 
-    <author fullname="Alia Atlas" initials="A.K.A." surname="Atlas" role="editor">
+    <author fullname="Alia Atlas" initials="A.K.A." surname="Atlas" >
      <organization>Juniper Networks</organization>
      <address>
        <postal>
@@ -3175,15 +3175,9 @@ in the .txt version of the draft, one can cut and paste the
 Python code from the .xml version.  The code is also posted 
 on Github. </t>
 
-<t>While this Python code is believed to correctly to implement the 
+<t>While this Python code is believed to correctly implement the 
 pseudo-code description of the algorithm, in the event of a difference,
 the pseudo-code description should be considered normative. </t> 
-
-
-
-
-
-
 
 <figure>
 <artwork align="left"><![CDATA[
@@ -5664,7 +5658,7 @@ details on implementation status.</t>
 
     <section anchor="Security" title="Security Considerations" >
  <t>The algorithm described in this document does not introduce new 
-security concerns, beyond those already discussed in the document 
+security concerns beyond those already discussed in the document 
 describing the MRT FRR architecture <xref 
 target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.</t> 
 
