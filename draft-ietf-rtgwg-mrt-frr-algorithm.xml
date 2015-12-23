@@ -1154,11 +1154,27 @@ computed.</t>
 <t> As noted in <xref target="sec_broadcast"/>, pseudonodes MUST 
 NOT be considered for GADAG root selection.</t>
 
-<t>Analysis has shown that the centrality of a router can have a
+<t>It is expected that an operator will designate a set of routers as 
+good choices for selection as GADAG root by setting the GADAG Root 
+Selection Priority for that set of routers to lower (more preferred) 
+numerical values. </t> 
+
+<t> If the router currently selected as GADAG root becomes unreachable 
+in the IGP topology, then a new GADAG root will be selected. Changing 
+the GADAG root can change the overall structure of the GADAG as well 
+the paths of the red and blue MRT trees built using that GADAG. In order 
+to minimize change in the associated red and blue MRT forwarding entries 
+that can result from changing the GADAG root, it is RECOMMENDED that 
+operators prioritize for selection as GADAG root those routers that are 
+expected to consistently remain part of the IGP topology. </t> 
+
+<t>In addition, analysis has shown that the centrality of a router can have a
 significant impact on the lengths of the alternate paths computed.
 Therefore, it is RECOMMENDED that off-line analysis that considers the
 centrality of a router be used to help determine how good a choice a
-particular router is for the role of GADAG root.</t>
+particular router is for the role of GADAG root. </t>
+
+
 
 </section>
 <section anchor="sec_initialize" title="Initialization" >
