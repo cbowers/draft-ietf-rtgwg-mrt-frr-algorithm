@@ -57,7 +57,7 @@
     <!-- The abbreviated title is used in the page header - it is only necessary if the 
          full title is longer than 39 characters -->
 
-    <title abbrev="MRT FRR Algorithm">Algorithms for computing Maximally Redundant Trees for IP/LDP Fast-Reroute</title>
+    <title abbrev="MRT FRR Algorithm">An Algorithm for Computing Maximally Redundant Trees for IP/LDP Fast-Reroute</title>
 
     <!-- add 'role="editor"' below for the editors if appropriate -->
 
@@ -162,7 +162,7 @@
   decisions and rationale.  The algorithm is based on those presented
   in <xref target="MRTLinear"/> and expanded in <xref
   target="EnyediThesis"/>.  The MRT Lowpoint algorithm is required for
-  implementation when the default MRT profile is implemented.</t>
+  implementation when the Default MRT profile is implemented.</t>
 
   <t>Just as packets routed on a hop-by-hop basis require that each
   router compute a shortest-path tree which is consistent, it is
@@ -205,7 +205,7 @@ a 2-connected graph     MRT-Blue towards R          MRT-Red towards R
    ]]></artwork>
 </figure>
 
-  <t>Algorithms for computing MRTs can handle arbitrary network
+  <t>The MRT Lowpoint algorithm can handle arbitrary network
   topologies where the whole network graph is not 2-connected, as in
   <xref target="non-2-connected_graph_and_mrts"/>, as well as the
   easier case where the network graph is 2-connected (<xref
@@ -317,7 +317,7 @@ repeat terminology introduced in that draft.</t>
 <section title="Algorithm Key Concepts" >
 
 <t>There are five key concepts that are critical for understanding the
-MRT Lowpoint algorithm and other algorithms for computing MRTs.  The
+MRT Lowpoint algorithm. The
 first is the idea of partially ordering the nodes in a network graph
 with regard to each other and to the GADAG root.  The second is the
 idea of finding an ear of nodes and adding them in the correct
@@ -511,15 +511,17 @@ Generic_Find_Ears_ADAG(root)
 ]]></artwork>
 </figure>
 
-<t>Algorithm <xref target="alg_generic_ear"/> merely requires that a
-cycle or ear be selected without specifying how.  Regardless of the
-way of selecting the path, we will get an ADAG.  The method used for
-finding and selecting the ears is important; shorter ears result in
-shorter paths along the MRTs.  The MRT Lowpoint algorithm's method
-using Low-Point Inheritance is defined in <xref
-target="sec_gadag_lowpoint"/>.  Other methods are described in  
-<xref target="sec_gadag_spf"/> and <xref
-target="sec_gadag_hybrid"/>.</t>
+<t>The algorithm in <xref target="alg_generic_ear"/> merely requires 
+that a cycle or ear be selected without specifying how. Regardless of 
+the method for selecting the path, we will get an ADAG. The method used for 
+finding and selecting the ears is important; shorter ears result in 
+shorter paths along the MRTs. The MRT Lowpoint algorithm uses the 
+Low-Point Inheritance method for constructing an ADAG (and ultimately a 
+GADAG). This method is defined in <xref target="sec_gadag_lowpoint"/>. 
+Other methods for constructing GADAGs are described in <xref 
+target="sec_gadag_spf"/> and <xref target="sec_gadag_hybrid"/>. An 
+evaluation of these different methods is given in <xref 
+target="sec_eval_alt_methods"/></t> 
 
 <t>As an example, consider <xref target="add_ear_figure"/>
 again. First, we select the shortest cycle containing R, which can be
@@ -704,7 +706,8 @@ block may also be the root of another block.</t>
 
 <section title="Blocks in a Graph" >
 
-<t> A key idea for an MRT algorithm is that any non-2-connected graph
+<t> A key idea for the MRT Lowpoint algorithm is 
+that any non-2-connected graph
 is made up by blocks (e.g. 2-connected clusters, cut-links, and/or
 isolated nodes).  To compute GADAGs and thus MRTs, computation is done
 in each block to compute ADAGs or Redundant Trees and then those ADAGs
@@ -811,7 +814,7 @@ title="A method for computing local-roots">
 <t>There are two different ways of computing the local-root for each
 node.  The stand-alone method is given in <xref
 target="local-root_computation"/> and better illustrates the concept;
-it is used by the MRT algorithms given in <xref
+it is used by the GADAG construction methods given in <xref
 target="sec_gadag_spf"/> and <xref target="sec_gadag_hybrid"/>.  The
 MRT Lowpoint algorithm computes the local-root for a block as part of
 computing the GADAG using lowpoint inheritance; the essence of this
@@ -874,7 +877,7 @@ Assign_Block_ID(gadag_root, max_block_id)
 </section>
 </section>
 
-<section title="Algorithm Specification" >
+<section title="MRT Lowpoint Algorithm Specification" >
 
 <t>This algorithm computes one GADAG that is then used by a router to
 determine its MRT-Blue and MRT-Red next-hops to all destinations.
@@ -1143,7 +1146,7 @@ broadcast interfaces on that broadcast network from the MRT Island.</t>
 </section>
 
 <section anchor="sec_gadag_lowpoint"
-title="MRT Lowpoint Algorithm: Computing GADAG using lowpoint inheritance" >
+title="Constructing the GADAG using lowpoint inheritance" >
 
 <t>As discussed in <xref target="sec_ear"/>, it is necessary to find
 ears from a node x that is already in the GADAG (known as IN_GADAG).
@@ -1265,7 +1268,7 @@ Construct_GADAG_via_Lowpoint(topology, gadag_root)
 <section anchor="sec_gadag_direct_links" 
 title="Augmenting the GADAG by directing all links" >
 
-<t>The GADAG, regardless of the algorithm used to construct it, at
+<t>The GADAG, regardless of the method used to construct it, at
 this point could be used to find MRTs, but the topology does not
 include all links in the network graph.  That has two impacts.  First,
 there might be shorter paths that respect the GADAG partial ordering
@@ -3113,15 +3116,15 @@ not require coordination with other nodes. </t>
 
 
 
-<section title="Evaluation of Alternative Methods for Computing GADAGs" >
+<section anchor="sec_eval_alt_methods" title="Evaluation of Alternative Methods for Constructing GADAGs" >
 
 <t> This document specifies the MRT Lowpoint algorithm. One component of 
-the algorithm involves computing a common GADAG based on the network 
+the algorithm involves constructing a common GADAG based on the network 
 topology. The MRT Lowpoint algorithm computes the GADAG using the method 
 described in <xref target="sec_gadag_lowpoint"/>. This method aims to 
 minimize the amount of computation required to compute the GADAG. In the 
 process of developing the MRT Lowpoint algorithm, two alternative 
-methods for computing GADAGs were also considered. These alternative 
+methods for constructing GADAGs were also considered. These alternative 
 methods are described in <xref target="sec_gadag_spf"/> and <xref 
 target="sec_gadag_hybrid"/>. In general, these other two methods require 
 more computation to compute the GADAG. The analysis below was performed 
@@ -3130,13 +3133,13 @@ shorter MRT alternate paths in real network topologies, and if so, to
 what extent. </t> 
 
 <t> <xref target="variant_comparison_table"/> compares results obtained 
-using the three different methods for computing GADAGs on five different 
+using the three different methods for constructing GADAGs on five different 
 service provider network topologies. MRT_LOWPOINT indicates the method 
 specified in <xref target="sec_gadag_lowpoint"/>, while MRT_SPF and 
 MRT_HYBRID indicate the methods specified in <xref 
 target="sec_gadag_spf"/> and <xref target="sec_gadag_hybrid"/>, 
 respectively. The columns on the right present the distribution of 
-alternate path lengths for each GADAG computation method. Each MRT 
+alternate path lengths for each GADAG construction method. Each MRT 
 computation was performed using a same GADAG root chosen based on 
 centrality.</t> 
 
@@ -3148,11 +3151,11 @@ the use of the MRT_SPF method resulted in noticeably shorter alternate
 path lengths than the use of the MRT_LOWPOINT or MRT_HYBRID methods. 
 </t> 
 
-<t> It was decided to use the MRT_LOWPOINT method to compute the GADAG 
+<t> It was decided to use the MRT_LOWPOINT method to construct the GADAG 
 in the algorithm specified in this draft, in order to initially offer an 
-algorithm with low computational requirements. These results indicate 
+algorithm with lower computational requirements. These results indicate 
 that in the future it may be useful to evaluate and potentially specify 
-other MRT algorithm variants that use different GADAG computation 
+other MRT algorithm variants that use different GADAG construction 
 methods. </t> 
 
 <figure anchor="variant_comparison_table" align="center">
@@ -3160,8 +3163,8 @@ methods. </t>
 +-------------------------------------------------------------------+
 |        Topology name         |   percentage of failure scenarios  |
 |                              |  protected by an alternate N hops  |
-|     MRT algorithm variant    |   longer than the primary path     |
-|                              +------------------------------------+
+|      GADAG construction      |   longer than the primary path     |
+|            method            +------------------------------------+
 |                              |   |   |   |   |   |   |   |   | no |
 |                              |   |   |   |   |   |10 |12 |14 | alt|
 |                              |0-1|2-3|4-5|6-7|8-9|-11|-13|-15| <16|
@@ -5264,9 +5267,10 @@ Generate_Complex_Topology_and_Run_MRT()
 
 </section>
 	
-<section anchor="sec_gadag_spf" title="Option 2: Computing GADAG using SPFs" >
+<section anchor="sec_gadag_spf" title="Constructing a GADAG using SPFs" >
 
-<t>The basic idea in this option is to use slightly-modified SPF
+<t>The basic idea in this method for constructing a GADAG
+is to use slightly-modified SPF
 computations to find ears. In every block, an SPF computation is first
 done to find a cycle from the local root and then SPF computations in
 that block find ears until there are no more interfaces to be
@@ -5304,7 +5308,7 @@ UNDIRECTED) already specified for each interface.</t>
 </list></t>
 
 <figure anchor="mod_spf_alg" align="center"
-title="Modified SPF for GADAG computation">
+title="Modified SPF for GADAG construction">
 <artwork align="center"><![CDATA[
 
 Mod_SPF(spf_root, block_root)
@@ -5365,7 +5369,7 @@ y-&gt;x...q-&gt;z but if y &gt;&gt; z, then the path should be
 y&lt;-x...q&lt;-z.  In <xref target="sec_gadag_lowpoint"/>, the same
 problem was handled by finding all ears that started at a node before
 looking at ears starting at nodes higher in the partial order.  In
-this algorithm, using that approach could mean that new ears aren't
+this GADAG computation method, using that approach could mean that new ears aren't
 added in order of their total cost since all ears connected to a node
 would need to be found before additional nodes could be found.</t>
 
@@ -5375,7 +5379,7 @@ maintaining two sets of nodes at each node.  The first set,
 Higher_Nodes, contains all nodes that are known to be ordered above
 the node.  The second set, Lower_Nodes, contains all nodes that are
 known to be ordered below the node.  This is the approach used in this
-algorithm.</t>
+GADAG construction method.</t>
 
 <figure anchor="ear_direction_alg" align="center"
 title="Algorithm to assign links of an ear direction">
@@ -5383,7 +5387,7 @@ title="Algorithm to assign links of an ear direction">
 
 Set_Ear_Direction(ear_list, end_a, end_b, block_root)
   // Default of A_TO_B for the following cases:
-  //  (a) end_a and end_b are the same (root) 
+  // (a) end_a and end_b are the same (root) 
   // or (b) end_a is in end_b's Lower Nodes
   // or (c) end_a and end_b were unordered with respect to each
   //        other
@@ -5426,7 +5430,7 @@ Set_Ear_Direction(ear_list, end_a, end_b, block_root)
 ]]></artwork>
 </figure>
 
-<t>A goal of the algorithm is to find the shortest cycles and ears.
+<t>A goal of this GADAG construction method is to find the shortest cycles and ears.
 An ear is started by going to a neighbor x of an IN_GADAG node y.  The
 path from x to an IN_GADAG node is minimal, since it is computed via
 SPF.  Since a shortest path is made of shortest paths, to find the
@@ -5434,11 +5438,11 @@ shortest ears requires reaching from the set of IN_GADAG nodes to the
 closest node that isn't IN_GADAG.  Therefore, an ordered tree is
 maintained of interfaces that could be explored from the IN_GADAG
 nodes.  The interfaces are ordered by their characteristics of metric,
-local loopback address, remote loopback address, and ifindex, as in
-the algorithm previously described in <xref
+local loopback address, remote loopback address, and ifindex, based on 
+the Interface_Compare function defined in <xref
 target="interface_ordering"/>.</t>
 
-<t>The algorithm ignores interfaces picked from the ordered tree that
+<t>This GADAG construction method ignores interfaces picked from the ordered list that
 belong to the block root if the block in which the interface is
 present already has an ear that has been computed. This is necessary
 since we allow at most one incoming interface to a block root in each
@@ -5455,7 +5459,7 @@ cut-vertices.  Cut-links can simply be added to the GADAG with both
 OUTGOING and INCOMING specified on their interfaces.</t>
 
 <figure anchor="spf_gadag" align="center"
-title="SPF-based GADAG algorithm">
+title="SPF-based method for GADAG construction">
 <artwork align="center"><![CDATA[
 add_eligible_interfaces_of_node(ordered_intfs_tree,node)
    for each interface of node
@@ -5514,7 +5518,7 @@ Construct_GADAG_via_SPF(topology, root)
 </section>
 
 
-<section anchor="sec_gadag_hybrid" title="Option 3: Computing GADAG using a hybrid method" >
+<section anchor="sec_gadag_hybrid" title="Constructing a GADAG using a hybrid method" >
 
 <t>In this option, the idea is to combine the salient features of the
 lowpoint inheritance and SPF methods.  To this end, we process nodes
