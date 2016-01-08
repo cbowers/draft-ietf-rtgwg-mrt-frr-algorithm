@@ -1079,11 +1079,11 @@ MRT_Island_Identification(topology, computing_rtr, profile_id, area)
 
 <t>In Section 8.3 of <xref
 target="I-D.ietf-rtgwg-mrt-frr-architecture"/>, the GADAG Root
-Selection Policy is described for the MRT default profile.  In <xref
-target="I-D.ietf-ospf-mrt"/> and <xref target="I-D.ietf-isis-mrt"/>, a
-mechanism is given for routers to advertise the GADAG Root Selection
-Priority and consistently select a GADAG Root inside the local MRT
-Island.  The MRT Lowpoint algorithm simply requires that all routers
+Selection Policy is described for the MRT default profile.  This selection
+policy relies allows routers consistently select
+a common GADAG Root inside the local MRT Island, based on advertised 
+priority values.
+The MRT Lowpoint algorithm simply requires that all routers
 in the MRT Island MUST select the same GADAG Root; the mechanism can
 vary based upon the MRT profile description.  Before beginning
 computation, the network graph is reduced to contain only the set of
@@ -1120,19 +1120,16 @@ step.</t>
 Whether they are OUTGOING, INCOMING or both is determined when the
 GADAG is constructed and augmented.</t>
 
-<t> It is possible that some links and nodes will be marked as
-unusable using standard IGP mechanisms (see section 7 of <xref
-target="I-D.ietf-rtgwg-mrt-frr-architecture"/>).  Due to FRR
-manageability considerations <xref
-target="I-D.ietf-rtgwg-lfa-manageability"/>, it may also be desirable
-to administratively configure some interfaces as ineligible to carry
-MRT FRR traffic. This constraint MUST be consistently flooded via the
-IGP <xref target="I-D.ietf-ospf-mrt"/> <xref
-target="I-D.ietf-isis-mrt"/> by the owner of the interface, so that
-links are known to be MRT-ineligible and not explored or used
-in the MRT algorithm.  When a either interface on a link is advertised as 
-MRT-ineligible, the link MUST NOT be included in the MRT Island, and 
-will thus be excluded from the GADAG.  Computation of MRT next-hops 
+<t> It is possible that some links and nodes will be marked using 
+standard IGP mechanisms to discourage or prevent transit traffic.
+Section 7.3.1 of <xref
+target="I-D.ietf-rtgwg-mrt-frr-architecture"/> describes how 
+those links and nodes are excluded from MRT Island formation.</t>
+
+<t>MRT-FRR also has the ability to advertise links MRT-Ineligible, as 
+described in Section 7.3.2 of <xref
+target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.  These links are excluded
+from the MRT Island and the GADAG. Computation of MRT next-hops 
 will therefore not use any MRT-ineligible links.  The MRT algorithm does
 still need to consider MRT-ineligible links when computing FRR alternates,
 because an MRT-ineligible link can still be the shortest-path next-hop to 
@@ -3686,8 +3683,6 @@ target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.</t>
     &RFC7490;
     &I-D.ietf-rtgwg-lfa-manageability;
     <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-pcr-04.xml"?>
-	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-mrt-01.xml"?>
-	<?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-ospf-mrt-01.xml"?>	
 
     <reference anchor="Kahn_1962_topo_sort"
           target="http://dl.acm.org/citation.cfm?doid=368996.369025">
