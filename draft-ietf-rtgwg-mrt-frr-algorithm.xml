@@ -879,7 +879,7 @@ Assign_Block_ID(gadag_root, max_block_id)
 
 <section title="MRT Lowpoint Algorithm Specification" >
 
-<t>This algorithm computes one GADAG that is then used by a router to
+<t>The MRT Lowpoint algorithm computes one GADAG that is then used by a router to
 determine its MRT-Blue and MRT-Red next-hops to all destinations.
 Finally, based upon that information, alternates are selected for each
 next-hop to each destination.  The different parts of this algorithm
@@ -961,13 +961,13 @@ the algorithm.</t>
 <t> The Interface_Compare function in <xref
 target="interface_ordering"/> relies on the interface.metric and the
 interface.neighbor.mrt_node_id values to order interfaces.  The exact
-source of these values for different IGPs (or flooding protocol in the
-case of ISIS-PCR <xref target="I-D.ietf-isis-pcr"/>) and
+source of these values for different IGPs and
 applications is specified in <xref
 target="mrt_node_id_and_metric"/>. The metric and mrt_node_id values
 for OSPFv2, OSPFv3, and IS-IS provided here is normative.  The metric
 and mrt_node_id values for ISIS-PCR should be considered
-informational. </t>
+informational.  The normative values are defined in
+ <xref target="IEEE8021Qca"/> ). </t>
 
 <figure anchor = "mrt_node_id_and_metric" align="center" title="value of interface.neighbor.mrt_node_id 
 and interface.metric to be used for ranking interfaces,
@@ -1025,20 +1025,6 @@ using network byte order and performing the comparison as unsigned
 integers. In the case of IS-IS for IP/LDP FRR with point-to-point links, 
 the pseudonode number (the 7th octet) is zero. Broadcast interfaces 
 will be discussed in <xref target="sec_broadcast"/>. </t> 
-
-
-
-<t>
-In the case of IS-IS for IP/LDP FRR, this specification allows for the
-use of Multi-Topology routing.  <xref target="RFC5120"/> requires that
-information related to the standard/default topology (MT-ID = 0) be
-carried in the Extended IS Reachability TLV #22, while it requires
-that the Multi-Topology IS Neighbor TLV #222 only be used to carry
-topology information related to non-default topologies (with non-zero
-MT-IDs).  <xref target="RFC5120"/> enforces this by requiring an
-implementation to ignore TLV#222 with MT-ID = 0.  The current document
-also requires that TLV#222 with MT-ID = 0 MUST be ignored.
-</t>
 
 </section>
 
@@ -3312,6 +3298,16 @@ target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.</t>
 		<seriesInfo name= "ISO/IEC" value="10589:2002, Second Edition" />
 	  </reference> 
 			  
+	<reference anchor="IEEE8021Qca" target="http://www.ieee802.org/1/pages/802.1ca.html">
+        <front>
+          <title>IEEE 802.1Qca Bridges and Bridged Networks - Amendment: Path Control and Reservation - Draft 2.1</title>
+          <author>
+            <organization>IEEE 802.1</organization>
+          </author>
+          <date year="(work in progress), June 24, 2015" />
+        </front>
+	</reference>
+	
     </references>
 
 <section anchor="sec_python_implementation" title="Python Implementation of MRT Lowpoint Algorithm" >
