@@ -3112,509 +3112,84 @@ not require coordination with other nodes. </t>
 
 
 
-<section title="Algorithm Alternatives and Evaluation" >
 
-<t>This specification defines the MRT Lowpoint Algorithm, which is one
-option among several possible MRT algorithms.  Other alternatives are
-described in <xref
-target="sec_gadag_spf"/> and <xref target="sec_gadag_hybrid"/>.</t>
+<section title="Evaluation of Alternative Methods for Computing GADAGs" >
 
-<t>In addition, it is possible to calculate Destination-Rooted GADAG,
-where for each destination, a GADAG rooted at that destination is
-computed.  Then a router can compute the blue MRT and red MRT
-next-hops to that destination.  Building GADAGs per destination is
-computationally more expensive, but may give somewhat shorter
-alternate paths.  It may be useful for live-live multicast along
-MRTs.</t>
+<t> This document specifies the MRT Lowpoint algorithm. One component of 
+the algorithm involves computing a common GADAG based on the network 
+topology. The MRT Lowpoint algorithm computes the GADAG using the method 
+described in <xref target="sec_gadag_lowpoint"/>. This method aims to 
+minimize the amount of computation required to compute the GADAG. In the 
+process of developing the MRT Lowpoint algorithm, two alternative 
+methods for computing GADAGs were also considered. These alternative 
+methods are described in <xref target="sec_gadag_spf"/> and <xref 
+target="sec_gadag_hybrid"/>. In general, these other two methods require 
+more computation to compute the GADAG. The analysis below was performed 
+to determine if the alternative GADAG computation methods produce 
+shorter MRT alternate paths in real network topologies, and if so, to 
+what extent. </t> 
 
-<section title="Algorithm Evaluation" >
+<t> <xref target="variant_comparison_table"/> compares results obtained 
+using the three different methods for computing GADAGs on five different 
+service provider network topologies. MRT_LOWPOINT indicates the method 
+specified in <xref target="sec_gadag_lowpoint"/>, while MRT_SPF and 
+MRT_HYBRID indicate the methods specified in <xref 
+target="sec_gadag_spf"/> and <xref target="sec_gadag_hybrid"/>, 
+respectively. The columns on the right present the distribution of 
+alternate path lengths for each GADAG computation method. Each MRT 
+computation was performed using a same GADAG root chosen based on 
+centrality.</t> 
 
-<t>The MRT Lowpoint algorithm is the lowest computation of the MRT
-algorithms.  Two other MRT algorithms are provided in <xref
-target="sec_gadag_spf"/> and <xref target="sec_gadag_hybrid"/>.  When
-analyzed on service provider network topologies, they did not provide
-significant differences in the path lenghts for the alternatives.
-This section does not focus on that analysis or the decision to use
-the MRT Lowpoint algorithm as the default MRT algorithm; it has the
-lowest computational and storage requirements and gave comparable
-results.</t>
+<t> For three of the topologies analyzed (T201, T206, and T211), the use 
+of MRT_SPF or MRT_HYBRID methods does not appear to provide a 
+significantly shorter alternate path lengths compared to the 
+MRT_LOWPOINT method. However, for two of the topologies (T216 and T219), 
+the use of the MRT_SPF method resulted in noticeably shorter alternate 
+path lengths than the use of the MRT_LOWPOINT or MRT_HYBRID methods. 
+</t> 
 
-<t>Since this document defines the MRT Lowpoint algorithm for use in
-fast-reroute applications, it is useful to compare MRT and Remote LFA
-<xref target="RFC7490"/>.  This section compares MRT
-and remote LFA for IP Fast Reroute in 19 service provider network
-topologies, focusing on coverage and alternate path length.  <xref
-target="coverage_comparison_table"/> shows the node-protecting
-coverage provided by local LFA (LLFA), remote LFA (RLFA), and MRT
-against different failure scenarios in these topologies.  The coverage
-values are calculated as the percentage of source-destination pairs
-protected by the given IPFRR method relative to those protectable by
-optimal routing, against the same failure modes.  More details on
-alternate selection policies used for this analysis are described
-later in this section.
-</t>
+<t> It was decided to use the MRT_LOWPOINT method to compute the GADAG 
+in the algorithm specified in this draft, in order to initially offer an 
+algorithm with low computational requirements. These results indicate 
+that in the future it may be useful to evaluate and potentially specify 
+other MRT algorithm variants that use different GADAG computation 
+methods. </t> 
 
-
-<figure anchor="coverage_comparison_table" align="center">
-<artwork align="center"><![CDATA[
-+------------+-----------------------------+
-|  Topology  |    percentage of failure    |
-|            |    scenarios covered by     |
-|            |        IPFRR method         |
-|            |-----------------------------+
-|            | NP_LLFA | NP_RLFA |   MRT   |
-+------------+---------+---------+---------+
-|    T201    |   37    |   90    |   100   |
-|    T202    |   73    |   83    |   100   |
-|    T203    |   51    |   80    |   100   |
-|    T204    |   55    |   81    |   100   |
-|    T205    |   92    |   93    |   100   |
-|    T206    |   71    |   74    |   100   |
-|    T207    |   57    |   74    |   100   |   
-|    T208    |   66    |   81    |   100   |
-|    T209    |   79    |   79    |   100   |
-|    T210    |   95    |   98    |   100   |
-|    T211    |   68    |   71    |   100   |
-|    T212    |   59    |   63    |   100   |
-|    T213    |   84    |   84    |   100   |  
-|    T214    |   68    |   78    |   100   |
-|    T215    |   84    |   88    |   100   |
-|    T216    |   43    |   59    |   100   |
-|    T217    |   78    |   88    |   100   |
-|    T218    |   72    |   75    |   100   |
-|    T219    |   78    |   84    |   100   |
-+------------+---------+---------+---------+
-]]></artwork>
-</figure>
-
-<t>
-For the topologies analyzed here, LLFA is able to provide
-node-protecting coverage ranging from 37% to 95% of the
-source-destination pairs, as seen in the column labeled NP_LLFA.  The
-use of RLFA in addition to LLFA is generally able to increase the
-node-protecting coverage.  The percentage of node-protecting coverage
-with RLFA is provided in the column labeled NP_RLFA, ranges from 59%
-to 98% for these topologies.  The node-protecting coverage provided by
-MRT is 100% since MRT is able to provide protection for any
-source-destination pair for which a path still exists after the
-failure.
-</t>
-
-<t>
-We would also like to measure the quality of the alternate paths
-produced by these different IPFRR methods.  An obvious approach is to
-take an average of the alternate path costs over all
-source-destination pairs and failure modes.  However, this presents a
-problem, which we will illustrate by presenting an example of results
-for one topology using this approach ( <xref
-target="sample_path_cost_table"/>).  In this table, the average
-relative path length is the alternate path length for the IPFRR method
-divided by the optimal alternate path length, averaged over all
-source-destination pairs and failure modes.  The first three columns
-of data in the table give the path length calculated from the sum of
-IGP metrics of the links in the path. The results for topology T208
-show that the metric-based path lengths for NP_LLFA and NP_RLFA
-alternates are on average 78 and 66 times longer than the path lengths
-for optimal alternates.  The metric-based path lengths for MRT
-alternates are on average 14 times longer than for optimal alternates.
- </t>
-
-<figure anchor="sample_path_cost_table" align="center">
-<artwork align="center"><![CDATA[
-+--------+------------------------------------------------+
-|        |     average relative alternate path length     |
-|        |-----------------------+------------------------+
-|Topology|      IGP metric       |       hopcount         |
-|        |-----------------------+------------------------+
-|        |NP_LLFA |NP_RLFA | MRT |NP_LLFA |NP_RLFA | MRT  |
-+--------+--------+--------+-----+--------+--------+------+
-|  T208  |  78.2  |   66.0 | 13.6|  0.99  |  1.01  | 1.32 |
-+--------+--------+--------+-----+--------+--------+------+
-]]></artwork>
-</figure>
-
-<t>
-The network topology represented by T208 uses values of 10, 100, and
-1000 as IGP costs, so small deviations from the optimal alternate path
-can result in large differences in relative path length.  LLFA, RLFA,
-and MRT all allow for at least one hop in the alterate path to be
-chosen independent of the cost of the link.  This can easily result in
-an alternate using a link with cost 1000, which introduces noise into
-the path length measurement.  In the case of T208, the adverse effects
-of using metric-based path lengths is obvious.  However, we have
-observed that the metric-based path length introduces noise into
-alternate path length measurements in several other topologies as
-well.  For this reason, we have opted to measure the alternate path
-length using hopcount.  While IGP metrics may be adjusted by the
-network operator for a number of reasons (e.g. traffic engineering),
-the hopcount is a fairly stable measurement of path length.  As shown
-in the last three columns of <xref target="sample_path_cost_table"/>,
-the hopcount-based alternate path lengths for topology T208 are fairly
-well-behaved.
-</t>
-
-<t>
-<xref target="histogram_comparison_table1"/>, <xref
-target="histogram_comparison_table2"/>, <xref
-target="histogram_comparison_table3"/>, and <xref
-target="histogram_comparison_table4"/> present the hopcount-based path
-length results for the 19 topologies examined.  The topologies in the
-four tables are grouped based on the size of the topologies, as
-measured by the number of nodes, with <xref
-target="histogram_comparison_table1"/> having the smallest topologies
-and <xref target="histogram_comparison_table4"/> having the largest
-topologies.  Instead of trying to represent the path lengths of a
-large set of alternates with a single number, we have chosen to
-present a histogram of the path lengths for each IPFRR method and
-alternate selection policy studied.  The first eight colums of data
-represent the percentage of failure scenarios protected by an
-alternate N hops longer than the primary path, with the first column
-representing an alternate 0 or 1 hops longer than the primary path,
-all the way up through the eighth column respresenting an alternate 14
-or 15 hops longer than the primary path.  The last column in the table
-gives the percentage of failure scenarios for which there is no
-alternate less than 16 hops longer than the primary path.  In the case
-of LLFA and RLFA, this category includes failure scenarios for which
-no alternate was found.
-</t>
-
-<t>
-For each topology, the first row (labeled OPTIMAL) is the distribution
-of the number of hops in excess of the primary path hopcount for
-optimally routed alternates.  (The optimal routing was done with
-respect to IGP metrics, as opposed to hopcount.)  The second
-row(labeled NP_LLFA) is the distribution of the extra hops for
-node-protecting LLFA.  The third row (labeled NP_LLFA_THEN_NP_RLFA) is
-the hopcount distribution when one adds node-protecting RLFA to
-increase the coverage. The alternate selection policy used here first
-tries to find a node-protecting LLFA.  If that does not exist, then it
-tries to find an RLFA, and checks if it is node-protecting.  Comparing
-the hopcount distribution for RLFA and LLFA across these topologies,
-one can see how the coverage is increased at the expense of using
-longer alternates.  It is also worth noting that while superficially
-LLFA and RLFA appear to have better hopcount distributions than
-OPTIMAL, the presence of entries in the last column (no alternate &lt;
-16) mainly represent failure scenarios that are not protected, for
-which the hopcount is effectively infinite.
-</t>
-
-<t>
-The fourth and fifth rows of each topology show the hopcount
-distributions for two alternate selection policies using MRT
-alternates.  The policy represented by the label
-NP_LLFA_THEN_MRT_LOWPOINT will first use a node-protecting LLFA.  If a
-node-protecting LLFA does not exist, then it will use an MRT
-alternate.  The policy represented by the label MRT_LOWPOINT instead
-will use the MRT alternate even if a node-protecting LLFA exists.  One
-can see from the data that combining node-protecting LLFA with MRT
-results in a significant shortening of the alternate hopcount
-distribution.
-</t>
-
-<t>
-<vspace blankLines='100' />
-</t>
-<figure anchor="histogram_comparison_table1" align="center">
-<artwork align="center"><![CDATA[
-+-------------------------------------------------------------------+
-|                              |   percentage of failure scenarios  |
-|        Topology name         |  protected by an alternate N hops  |
-|             and              |   longer than the primary path     |
-|     alternate selection      +------------------------------------+
-|       policy evaluated       |   |   |   |   |   |   |   |   | no |
-|                              |   |   |   |   |   |10 |12 |14 | alt|
-|                              |0-1|2-3|4-5|6-7|8-9|-11|-13|-15| <16|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T201(avg primary hops=3.5)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 37| 37| 20|  3|  3|   |   |   |    |
-|            NP_LLFA           | 37|   |   |   |   |   |   |   |  63|
-|     NP_LLFA_THEN_NP_RLFA     | 37| 34| 19|   |   |   |   |   |  10|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 37| 33| 21|  6|  3|   |   |   |    |
-|         MRT_LOWPOINT         | 33| 36| 23|  6|  3|   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T202(avg primary hops=4.8)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 90|  9|   |   |   |   |   |   |    |
-|            NP_LLFA           | 71|  2|   |   |   |   |   |   |  27|
-|     NP_LLFA_THEN_NP_RLFA     | 78|  5|   |   |   |   |   |   |  17|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 80| 12|  5|  2|  1|   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 48| 29| 13|  7|  2|  1|   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T203(avg primary hops=4.1)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 36| 37| 21|  4|  2|   |   |   |    |
-|            NP_LLFA           | 34| 15|  3|   |   |   |   |   |  49|
-|     NP_LLFA_THEN_NP_RLFA     | 35| 19| 22|  4|   |   |   |   |  20|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 36| 35| 22|  5|  2|   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 31| 35| 26|  7|  2|   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T204(avg primary hops=3.7)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 76| 20|  3|  1|   |   |   |   |    |
-|            NP_LLFA           | 54|  1|   |   |   |   |   |   |  45|
-|     NP_LLFA_THEN_NP_RLFA     | 67| 10|  4|   |   |   |   |   |  19|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 70| 18|  8|  3|  1|   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 58| 27| 11|  3|  1|   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T205(avg primary hops=3.4)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 92|  8|   |   |   |   |   |   |    |
-|            NP_LLFA           | 89|  3|   |   |   |   |   |   |   8|
-|     NP_LLFA_THEN_NP_RLFA     | 90|  4|   |   |   |   |   |   |   7|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 91|  9|   |   |   |   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 62| 33|  5|  1|   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-]]></artwork>
-</figure>
-<t>
-<vspace blankLines='100' />
-</t>
-<figure anchor="histogram_comparison_table2" align="center">
-<artwork align="center"><![CDATA[
-+-------------------------------------------------------------------+
-|                              |   percentage of failure scenarios  |
-|        Topology name         |  protected by an alternate N hops  |
-|             and              |   longer than the primary path     |
-|     alternate selection      +------------------------------------+
-|       policy evaluated       |   |   |   |   |   |   |   |   | no |
-|                              |   |   |   |   |   |10 |12 |14 | alt|
-|                              |0-1|2-3|4-5|6-7|8-9|-11|-13|-15| <16|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T206(avg primary hops=3.7)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 63| 30|  7|   |   |   |   |   |    |
-|            NP_LLFA           | 60|  9|  1|   |   |   |   |   |  29|
-|     NP_LLFA_THEN_NP_RLFA     | 60| 13|  1|   |   |   |   |   |  26|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 64| 29|  7|   |   |   |   |   |    |
-|         MRT_LOWPOINT         | 55| 32| 13|   |   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T207(avg primary hops=3.9)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 71| 24|  5|  1|   |   |   |   |    |
-|            NP_LLFA           | 55|  2|   |   |   |   |   |   |  43|
-|     NP_LLFA_THEN_NP_RLFA     | 63| 10|   |   |   |   |   |   |  26|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 70| 20|  7|  2|  1|   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 57| 29| 11|  3|  1|   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T208(avg primary hops=4.6)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 58| 28| 12|  2|  1|   |   |   |    |
-|            NP_LLFA           | 53| 11|  3|   |   |   |   |   |  34|
-|     NP_LLFA_THEN_NP_RLFA     | 56| 17|  7|  1|   |   |   |   |  19|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 58| 19| 10|  7|  3|  1|   |   |    |
-|       MRT_LOWPOINT_ONLY      | 34| 24| 21| 13|  6|  2|  1|   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T209(avg primary hops=3.6)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 85| 14|  1|   |   |   |   |   |    |
-|            NP_LLFA           | 79|   |   |   |   |   |   |   |  21|
-|     NP_LLFA_THEN_NP_RLFA     | 79|   |   |   |   |   |   |   |  21|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 82| 15|  2|   |   |   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 63| 29|  8|   |   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T210(avg primary hops=2.5)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 95|  4|  1|   |   |   |   |   |    |
-|            NP_LLFA           | 94|  1|   |   |   |   |   |   |   5|
-|     NP_LLFA_THEN_NP_RLFA     | 94|  3|  1|   |   |   |   |   |   2|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 95|  4|  1|   |   |   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 91|  6|  2|   |   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-]]></artwork>
-</figure>
-<t>
-<vspace blankLines='100' />
-</t>
-<figure anchor="histogram_comparison_table3" align="center">
-<artwork align="center"><![CDATA[
-+-------------------------------------------------------------------+
-|                              |   percentage of failure scenarios  |
-|        Topology name         |  protected by an alternate N hops  |
-|             and              |   longer than the primary path     |
-|     alternate selection      +------------------------------------+
-|       policy evaluated       |   |   |   |   |   |   |   |   | no |
-|                              |   |   |   |   |   |10 |12 |14 | alt|
-|                              |0-1|2-3|4-5|6-7|8-9|-11|-13|-15| <16|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T211(avg primary hops=3.3)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 88| 11|   |   |   |   |   |   |    |
-|            NP_LLFA           | 66|  1|   |   |   |   |   |   |  32|
-|     NP_LLFA_THEN_NP_RLFA     | 68|  3|   |   |   |   |   |   |  29|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 88| 12|   |   |   |   |   |   |    |
-|         MRT_LOWPOINT         | 85| 15|  1|   |   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T212(avg primary hops=3.5)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 76| 23|  1|   |   |   |   |   |    |
-|            NP_LLFA           | 59|   |   |   |   |   |   |   |  41| 
-|     NP_LLFA_THEN_NP_RLFA     | 61|  1|  1|   |   |   |   |   |  37|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 75| 24|  1|   |   |   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 66| 31|  3|   |   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T213(avg primary hops=4.3)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 91|  9|   |   |   |   |   |   |    |
-|            NP_LLFA           | 84|   |   |   |   |   |   |   |  16|
-|     NP_LLFA_THEN_NP_RLFA     | 84|   |   |   |   |   |   |   |  16|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 89| 10|  1|   |   |   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 75| 24|  1|   |   |   |   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T214(avg primary hops=5.8)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 71| 22|  5|  2|   |   |   |   |    |
-|            NP_LLFA           | 58|  8|  1|  1|   |   |   |   |  32|
-|     NP_LLFA_THEN_NP_RLFA     | 61| 13|  3|  1|   |   |   |   |  22|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 66| 14|  7|  5|  3|  2|  1|  1|   1|
-|       MRT_LOWPOINT_ONLY      | 30| 20| 18| 12|  8|  4|  3|  2|   3|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T215(avg primary hops=4.8)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 73| 27|   |   |   |   |   |   |    |
-|            NP_LLFA           | 73| 11|   |   |   |   |   |   |  16|
-|     NP_LLFA_THEN_NP_RLFA     | 73| 13|  2|   |   |   |   |   |  12|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 74| 19|  3|  2|  1|  1|  1|   |    |
-|       MRT_LOWPOINT_ONLY      | 32| 31| 16| 12|  4|  3|  1|   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-]]></artwork>
-</figure>
-<t>
-<vspace blankLines='100' />
-</t>
-<figure anchor="histogram_comparison_table4" align="center">
-<artwork align="center"><![CDATA[
-+-------------------------------------------------------------------+
-|                              |   percentage of failure scenarios  |
-|        Topology name         |  protected by an alternate N hops  |
-|             and              |   longer than the primary path     |
-|     alternate selection      +------------------------------------+
-|       policy evaluated       |   |   |   |   |   |   |   |   | no |
-|                              |   |   |   |   |   |10 |12 |14 | alt|
-|                              |0-1|2-3|4-5|6-7|8-9|-11|-13|-15| <16|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T216(avg primary hops=5.2)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 60| 32|  7|  1|   |   |   |   |    |
-|            NP_LLFA           | 39|  4|   |   |   |   |   |   |  57|
-|     NP_LLFA_THEN_NP_RLFA     | 46| 12|  2|   |   |   |   |   |  41|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 48| 20| 12|  7|  5|  4|  2|  1|   1|
-|         MRT_LOWPOINT         | 28| 25| 18| 11|  7|  6|  3|  2|   1|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T217(avg primary hops=8.0)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 81| 13|  5|  1|   |   |   |   |    |
-|            NP_LLFA           | 74|  3|  1|   |   |   |   |   |  22| 
-|     NP_LLFA_THEN_NP_RLFA     | 76|  8|  3|  1|   |   |   |   |  12|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 77|  7|  5|  4|  3|  2|  1|  1|    |
-|       MRT_LOWPOINT_ONLY      | 25| 18| 18| 16| 12|  6|  3|  1|    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T218(avg primary hops=5.5)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 85| 14|  1|   |   |   |   |   |    |
-|            NP_LLFA           | 68|  3|   |   |   |   |   |   |  28|
-|     NP_LLFA_THEN_NP_RLFA     | 71|  4|   |   |   |   |   |   |  25|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 77| 12|  7|  4|  1|   |   |   |    |
-|       MRT_LOWPOINT_ONLY      | 37| 29| 21| 10|  3|  1|   |   |    |
-+------------------------------+---+---+---+---+---+---+---+---+----+
-|  T219(avg primary hops=7.7)  |   |   |   |   |   |   |   |   |    |
-|            OPTIMAL           | 77| 15|  5|  1|  1|   |   |   |    |
-|            NP_LLFA           | 72|  5|   |   |   |   |   |   |  22|
-|     NP_LLFA_THEN_NP_RLFA     | 73|  8|  2|   |   |   |   |   |  16|
-|   NP_LLFA_THEN_MRT_LOWPOINT  | 74|  8|  3|  3|  2|  2|  2|  2|   4|
-|       MRT_LOWPOINT_ONLY      | 19| 14| 15| 12| 10|  8|  7|  6|  10|
-+------------------------------+---+---+---+---+---+---+---+---+----+
-]]></artwork>
-</figure>
-
-<t> In the preceding analysis, the following procedure for selecting
-an RLFA was used. Nodes were ordered with respect to distance from the
-source and checked for membership in Q and P-space.  The first node to
-satisfy this condition was selected as the RLFA.  More sophisticated
-methods to select node-protecting RLFAs is an area of active research.
-</t>
-
-<t> The analysis presented above uses the MRT Lowpoint Algorithm
-defined in this specification with a common GADAG root.  The
-particular choice of a common GADAG root is expected to affect the
-quality of the MRT alternate paths, with a more central common GADAG
-root resulting in shorter MRT alternate path lengths.  For the
-analysis above, the GADAG root was chosen for each topology by
-calculating node centrality as the sum of costs of all shortest paths
-to and from a given node.  The node with the lowest sum was chosen as
-the common GADAG root.  In actual deployments, the common GADAG root
-would be chosen based on the GADAG Root Selection Priority advertised
-by each router, the values of which would be determined off-line.
-</t>
-
-<t> 
-In order to measure how sensitive the MRT alternate path lengths are
-to the choice of common GADAG root, we performed the same analysis
-using different choices of GADAG root.  All of the nodes in the
-network were ordered with respect to the node centrality as computed
-above.  Nodes were chosen at the 0th, 25th, and 50th percentile with
-respect to the centrality ordering, with 0th percentile being the most
-central node.  The distribution of alternate path lengths for those
-three choices of GADAG root are shown in <xref
-target="algorithm_and_percentile_comparison_table"/> for a subset of
-the 19 topologies (chosen arbitrarily).  The third row for each
-topology (labeled MRT_LOWPOINT ( 0 percentile) ) reproduces the
-results presented above for MRT_LOWPOINT_ONLY.  The fourth and fifth
-rows show the alternate path length distibution for the 25th and 50th
-percentile choice for GADAG root.  One can see some impact on the path
-length distribution with the less central choice of GADAG root
-resulting in longer path lenghths.
-</t>
-
-<t>
-We also looked at the impact of MRT algorithm variant on the alternate
-path lengths.  The first two rows for each topology present results of
-the same alternate path length distribution analysis for the SPF and
-Hybrid methods for computing the GADAG.  These two methods are
-described in <xref target="sec_gadag_spf"/> and <xref
-target="sec_gadag_hybrid"/>.  For three of the topologies in this
-subset (T201, T206, and T211), the use of SPF or Hybrid methods does
-not appear to provide a significant advantage over the Lowpoint method
-with respect to path length.  Instead, the choice of GADAG root
-appears to have more impact on the path length. However, for two of
-the topologies in this subset(T216 and T219) and for this particular
-choice of GAGAG root, the use of the SPF method results in noticeably
-shorter alternate path lengths than the use of the Lowpoint or Hybrid
-methods.  It remains to be determined if this effect applies generally
-across more topologies or is sensitive to choice of GADAG root.
-</t>
-
-
-<t>
-<vspace blankLines='100' />
-</t>
-<figure anchor="algorithm_and_percentile_comparison_table" align="center">
+<figure anchor="variant_comparison_table" align="center">
 <artwork align="center"><![CDATA[
 +-------------------------------------------------------------------+
 |        Topology name         |   percentage of failure scenarios  |
 |                              |  protected by an alternate N hops  |
 |     MRT algorithm variant    |   longer than the primary path     |
 |                              +------------------------------------+
-|          (GADAG root         |   |   |   |   |   |   |   |   | no |
-|     centrality percentile)   |   |   |   |   |   |10 |12 |14 | alt|
+|                              |   |   |   |   |   |   |   |   | no |
+|                              |   |   |   |   |   |10 |12 |14 | alt|
 |                              |0-1|2-3|4-5|6-7|8-9|-11|-13|-15| <16|
 +------------------------------+---+---+---+---+---+---+---+---+----+
 |  T201(avg primary hops=3.5)  |   |   |   |   |   |   |   |   |    |
-|   MRT_HYBRID ( 0 percentile) | 33| 26| 23|  6|  3|   |   |   |    |
-|      MRT_SPF ( 0 percentile) | 33| 36| 23|  6|  3|   |   |   |    |
-| MRT_LOWPOINT ( 0 percentile) | 33| 36| 23|  6|  3|   |   |   |    |
-| MRT_LOWPOINT (25 percentile) | 27| 29| 23| 11| 10|   |   |   |    |
-| MRT_LOWPOINT (50 percentile) | 27| 29| 23| 11| 10|   |   |   |    |
+|  MRT_HYBRID                  | 33| 26| 23|  6|  3|   |   |   |    |
+|  MRT_SPF                     | 33| 36| 23|  6|  3|   |   |   |    |
+|  MRT_LOWPOINT                | 33| 36| 23|  6|  3|   |   |   |    |
 +------------------------------+---+---+---+---+---+---+---+---+----+
 |  T206(avg primary hops=3.7)  |   |   |   |   |   |   |   |   |    |
-|   MRT_HYBRID ( 0 percentile) | 50| 35| 13|  2|   |   |   |   |    |
-|      MRT_SPF ( 0 percentile) | 50| 35| 13|  2|   |   |   |   |    |
-| MRT_LOWPOINT ( 0 percentile) | 55| 32| 13|   |   |   |   |   |    |
-| MRT_LOWPOINT (25 percentile) | 47| 25| 22|  6|   |   |   |   |    |
-| MRT_LOWPOINT (50 percentile) | 38| 38| 14| 11|   |   |   |   |    |
+|  MRT_HYBRID                  | 50| 35| 13|  2|   |   |   |   |    |
+|  MRT_SPF                     | 50| 35| 13|  2|   |   |   |   |    |
+|  MRT_LOWPOINT                | 55| 32| 13|   |   |   |   |   |    |
 +------------------------------+---+---+---+---+---+---+---+---+----+
 |  T211(avg primary hops=3.3)  |   |   |   |   |   |   |   |   |    |
-|   MRT_HYBRID ( 0 percentile) | 86| 14|   |   |   |   |   |   |    |
-|      MRT_SPF ( 0 percentile) | 86| 14|   |   |   |   |   |   |    |
-| MRT_LOWPOINT ( 0 percentile) | 85| 15|  1|   |   |   |   |   |    |
-| MRT_LOWPOINT (25 percentile) | 70| 25|  5|  1|   |   |   |   |    |
-| MRT_LOWPOINT (50 percentile) | 80| 18|  2|   |   |   |   |   |    |
+|  MRT_HYBRID                  | 86| 14|   |   |   |   |   |   |    |
+|  MRT_SPF                     | 86| 14|   |   |   |   |   |   |    |
+|  MRT_LOWPOINT                | 85| 15|  1|   |   |   |   |   |    |
 +------------------------------+---+---+---+---+---+---+---+---+----+
 |  T216(avg primary hops=5.2)  |   |   |   |   |   |   |   |   |    |
-|   MRT_HYBRID ( 0 percentile) | 23| 22| 18| 13| 10|  7|  4|  2|   2|
-|      MRT_SPF ( 0 percentile) | 35| 32| 19|  9|  3|  1|   |   |    |
-| MRT_LOWPOINT ( 0 percentile) | 28| 25| 18| 11|  7|  6|  3|  2|   1|
-| MRT_LOWPOINT (25 percentile) | 24| 20| 19| 16| 10|  6|  3|  1|    |
-| MRT_LOWPOINT (50 percentile) | 19| 14| 13| 10|  8|  6|  5|  5|  10|
+|  MRT_HYBRID                  | 23| 22| 18| 13| 10|  7|  4|  2|   2|
+|  MRT_SPF                     | 35| 32| 19|  9|  3|  1|   |   |    |
+|  MRT_LOWPOINT                | 28| 25| 18| 11|  7|  6|  3|  2|   1|
 +------------------------------+---+---+---+---+---+---+---+---+----+
 |  T219(avg primary hops=7.7)  |   |   |   |   |   |   |   |   |    |
-|   MRT_HYBRID ( 0 percentile) | 20| 16| 13| 10|  7|  5|  5|  5|   3|
-|      MRT_SPF ( 0 percentile) | 31| 23| 19| 12|  7|  4|  2|  1|    |
-| MRT_LOWPOINT ( 0 percentile) | 19| 14| 15| 12| 10|  8|  7|  6|  10|
-| MRT_LOWPOINT (25 percentile) | 19| 14| 15| 13| 12| 10|  6|  5|   7|
-| MRT_LOWPOINT (50 percentile) | 19| 14| 14| 12| 11|  8|  6|  6|  10|
+|  MRT_HYBRID                  | 20| 16| 13| 10|  7|  5|  5|  5|   3|
+|  MRT_SPF                     | 31| 23| 19| 12|  7|  4|  2|  1|    |
+|  MRT_LOWPOINT                | 19| 14| 15| 12| 10|  8|  7|  6|  10|
 +------------------------------+---+---+---+---+---+---+---+---+----+
 
 ]]></artwork>
@@ -3622,7 +3197,6 @@ across more topologies or is sensitive to choice of GADAG root.
 
 </section>
 
-</section>
 
 <section title="Implementation Status">
 <t>
