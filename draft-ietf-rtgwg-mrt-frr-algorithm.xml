@@ -142,7 +142,7 @@
     <t>A solution for IP and LDP Fast-Reroute using Maximally
     Redundant Trees is presented in
     draft-ietf-rtgwg-mrt-frr-architecture.  This document defines the
-    associated MRT Lowpoint algorithm that is used in the default MRT
+    associated MRT Lowpoint algorithm that is used in the Default MRT
     profile to compute both the necessary Maximally Redundant Trees
     with their associated next-hops and the alternates to select for
     MRT-FRR.</t>
@@ -807,7 +807,7 @@ or Redundant Trees are combined into a GADAG or MRT.</t>
  |          V      |    |      |     V
 [A]<-------[B]    [G]<--|     [L]<--[M]
 
-   (c) MRT-Red for destionation R
+   (c) MRT-Red for destination R
 
 ]]></artwork>
 </figure>
@@ -1157,24 +1157,12 @@ NOT be considered for GADAG root selection.</t>
 <t>It is expected that an operator will designate a set of routers as 
 good choices for selection as GADAG root by setting the GADAG Root 
 Selection Priority for that set of routers to lower (more preferred) 
-numerical values. </t> 
-
-<t> If the router currently selected as GADAG root becomes unreachable 
-in the IGP topology, then a new GADAG root will be selected. Changing 
-the GADAG root can change the overall structure of the GADAG as well 
-the paths of the red and blue MRT trees built using that GADAG. In order 
-to minimize change in the associated red and blue MRT forwarding entries 
-that can result from changing the GADAG root, it is RECOMMENDED that 
-operators prioritize for selection as GADAG root those routers that are 
-expected to consistently remain part of the IGP topology. </t> 
-
-<t>In addition, analysis has shown that the centrality of a router can have a
-significant impact on the lengths of the alternate paths computed.
-Therefore, it is RECOMMENDED that off-line analysis that considers the
-centrality of a router be used to help determine how good a choice a
-particular router is for the role of GADAG root. </t>
+numerical values. For guidance on setting the GADAG Root Selection 
+Priority values, refer to Section 14.1 of <xref 
+target="I-D.ietf-rtgwg-mrt-frr-architecture"/> 
 
 
+</t> 
 
 </section>
 <section anchor="sec_initialize" title="Initialization" >
