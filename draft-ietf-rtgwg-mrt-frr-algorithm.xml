@@ -251,56 +251,13 @@ target="RFC2119"/>.</t>
 </section>
 
   <section title="Terminology and Definitions" >
+  
+<t>Please see the Terminology section of  <xref
+target="I-D.ietf-rtgwg-mrt-frr-architecture"/> for a complete list of
+terminology relevant to this draft.  The list below does not 
+repeat terminology introduced in that draft.</t>
 
   <t><list style="hanging">
-
-     <t hangText="network graph: ">A graph that reflects the network
-     topology where all links connect exactly two nodes and broadcast
-     links have been transformed into a pseudonode representation
-     (e.g. in OSPF, viewing a Network LSA as representing a
-     pseudonode).</t>
-
-     <t hangText="Redundant Trees (RT):"> A pair of trees where the
-     path from any node X to the root R on the first tree is
-     node-disjoint with the path from the same node X to the root
-     along the second tree.  These can be computed in 2-connected
-     graphs.</t>
-
-     <t hangText="Maximally Redundant Trees (MRT): ">A pair of trees
-     where the path from any node X to the root R along the first tree
-     and the path from the same node X to the root along the second
-     tree share the minimum number of nodes and the minimum number of
-     links.  Each such shared node is a cut-vertex.  Any shared links
-     are cut-links.  Any RT is an MRT but many MRTs are not RTs.</t>
-
-     <t hangText="MRT Island: "> From the computing router, the set of
-     routers that support a particular MRT profile and are
-     connected.</t>
-
-     <t hangText="MRT-Red: "> MRT-Red is used to describe one of the
-     two MRTs; it is used to describe the associated forwarding
-     topology and MT-ID.  Specifically, MRT-Red is the decreasing MRT
-     where links in the GADAG are taken in the direction from a higher
-     topologically ordered node to a lower one.</t>
-
-     <t hangText="MRT-Blue: "> MRT-Blue is used to describe one of the
-     two MRTs; it is used to describe the associated forwarding
-     topology and MT-ID.  Specifically, MRT-Blue is the increasing MRT
-     where links in the GADAG are taken in the direction from a lower
-     topologically ordered node to a higher one.</t>
-
-     <t hangText="cut-vertex: ">A vertex whose removal partitions the
-     network.</t>
-
-     <t hangText="cut-link: ">A link whose removal partitions the
-     network.  A cut-link by definition must be connected between two
-     cut-vertices.  If there are multiple parallel links, then they
-     are referred to as cut-links in this document if removing the set
-     of parallel links would partition the network. </t>
-
-     <t hangText="2-connected: ">A graph that has no cut-vertices.
-     This is a graph that requires two nodes to be removed before the
-     network is partitioned.</t>
 
      <t hangText="spanning tree: ">A tree containing links that
      connects all nodes in the network graph.</t>
@@ -309,28 +266,10 @@ target="RFC2119"/>.</t>
      computed via a depth-first search, a back-edge is a link that
      connects a descendant of a node x with an ancestor of x.</t>
 
-     <t hangText="2-connected cluster: ">A maximal set of nodes that
-     are 2-connected.  In a network graph with at least one
-     cut-vertex, there will be multiple 2-connected clusters.</t>
-
-     <t hangText="block: ">Either a 2-connected cluster, a cut-link,
-     or an isolated vertex.</t>
-
-     <t hangText="DAG: ">Directed Acyclic Graph - a digraph containing 
-     no directed cycle.</t>
-
-     <t hangText="ADAG: ">Almost Directed Acyclic Graph - a digraph
-     that can be transformed into a DAG with removing a single node 
-     (the root node).</t>
-
      <t hangText="partial ADAG: ">A subset of an ADAG that doesn't yet
      contain all the nodes in the block.  A partial ADAG is created
      during the MRT algorithm and then expanded until all nodes in the
      block are included and it is an ADAG.</t>
-
-     <t hangText="GADAG: ">Generalized ADAG - a digraph, which has only 
-     ADAGs as all of its blocks. The root of such a block is the node 
-     closest to the global root (e.g. with uniform link costs).</t>
 
      <t hangText="DFS:  ">Depth-First Search</t>
 
@@ -357,11 +296,9 @@ target="RFC2119"/>.</t>
      topological sort.  X &gt; Y means that X is higher in the total
      order than Y.  Y &lt; X means that Y is lower in the total order
      than X.</t>
-
-     <t hangText="proxy-node: ">A node added to the network graph to
-     represent a multi-homed prefix or routers outside the local
-     MRT-fast-reroute-supporting island of routers.  The key property
-     of proxy-nodes is that traffic cannot transit them.</t>
+	 
+	 <t hangText="X ?? Y: "> Indicates that X is unordered with
+	 respect to Y in the partial order.</t>
 
      <t hangText="UNDIRECTED: ">In the GADAG, each link is marked as
      OUTGOING, INCOMING or both.  Until the directionality of the link
