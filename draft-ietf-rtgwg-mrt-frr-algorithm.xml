@@ -12,8 +12,6 @@
 <!ENTITY RFC2328 SYSTEM "http://xml.resource.org/public/rfc/bibxml/reference.RFC.2328.xml">
 
 
-<!ENTITY I-D.ietf-rtgwg-lfa-manageability SYSTEM "http://xml.resource.org/public/rfc/bibxml3/reference.I-D.ietf-rtgwg-lfa-manageability.xml">
-
 
 ]>
 
@@ -185,10 +183,11 @@
 
   <t>This document defines an algorithm for selecting an appropriate
   MRT alternate for consideration.  Other alternates, e.g. LFAs that
-  are downstream paths, may be preferred when available and that
-  policy-based alternate selection process <xref
-  target="I-D.ietf-rtgwg-lfa-manageability"/> is not captured in this
-  document.</t>
+  are downstream paths, may be preferred when available. See the 
+  Operational Considerations section of 
+  <xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/> for 
+  a more detailed discussion of combining MRT alternates with those
+  produced by other FRR technologies.</t>
 
   <figure anchor="graph_2_connected_and_mrts" align="center">
    <artwork align="center"><![CDATA[
@@ -965,9 +964,9 @@ source of these values for different IGPs and
 applications is specified in <xref
 target="mrt_node_id_and_metric"/>. The metric and mrt_node_id values
 for OSPFv2, OSPFv3, and IS-IS provided here is normative.  The metric
-and mrt_node_id values for ISIS-PCR should be considered
+and mrt_node_id values for ISIS-PCR in this table should be considered
 informational.  The normative values are defined in
- <xref target="IEEE8021Qca"/> ). </t>
+ <xref target="IEEE8021Qca"/> . </t>
 
 <figure anchor = "mrt_node_id_and_metric" align="center" title="value of interface.neighbor.mrt_node_id 
 and interface.metric to be used for ranking interfaces,
@@ -1086,8 +1085,8 @@ NOT be considered for GADAG root selection.</t>
 good choices for selection as GADAG root by setting the GADAG Root 
 Selection Priority for that set of routers to lower (more preferred) 
 numerical values. For guidance on setting the GADAG Root Selection 
-Priority values, refer to Section 14.1 of <xref 
-target="I-D.ietf-rtgwg-mrt-frr-architecture"/> 
+Priority values, refer to <xref 
+target="sec_gadag_root_sel"/>.
 
 
 </t> 
@@ -3096,12 +3095,6 @@ not require coordination with other nodes. </t>
 
 </section>
 
-
-
-
-
-
-
 <section anchor="sec_eval_alt_methods" title="Evaluation of Alternative Methods for Constructing GADAGs" >
 
 <t> This document specifies the MRT Lowpoint algorithm. One component of 
@@ -3195,6 +3188,56 @@ methods. </t>
 details on implementation status.</t>
 </section>
 
+
+<section title="Operational Considerations">
+<t> This sections discusses operational considerations related to the  
+the MRT Lowpoint algorithm and other potential MRT algorithm variants.
+For a discussion of operational considerations
+related to MRT-FRR in general, see the Operational Considerations section of 
+<xref target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.  </t>
+
+<section anchor="sec_gadag_root_sel" title="GADAG Root Selection">
+<t> The Default MRT Profile uses the GADAG Root Selection Priority 
+advertised by routers as the primary criterion for selecting the 
+GADAG root.  It is RECOMMENDED that an operator designate a set of routers as 
+good choices for selection as GADAG root by setting the GADAG Root 
+Selection Priority for that set of routers to lower (more preferred) 
+numerical values. Criteria for making this designation are 
+discussed below.</t> 
+
+<t>Analysis has shown that the centrality of a router can have a
+significant impact on the lengths of the alternate paths computed.
+Therefore, it is RECOMMENDED that off-line analysis that considers the
+centrality of a router be used to help determine how good a choice a
+particular router is for the role of GADAG root. </t>
+
+<t> If the router currently selected as GADAG root becomes unreachable 
+in the IGP topology, then a new GADAG root will be selected. Changing 
+the GADAG root can change the overall structure of the GADAG as well 
+the paths of the red and blue MRT trees built using that GADAG. In order 
+to minimize change in the associated red and blue MRT forwarding entries 
+that can result from changing the GADAG root, it is RECOMMENDED that 
+operators prioritize for selection as GADAG root those routers that are 
+expected to consistently remain part of the IGP topology. </t> 
+</section>
+
+<section title="Destination-rooted GADAGs">
+<t> The MRT Lowpoint algorithm constructs a single GADAG rooted at a single node 
+selected as the GADAG root.  It is also possible to construct a different 
+GADAG for each destination, with the GADAG rooted at the destination.  
+A router can compute the MRT-Red and MRT-Blue next-hops for that destination
+based on the GADAG rooted at that destination. Building a different 
+GADAG for each destination is computationally 
+more expensive, but it may give somewhat shorter alternate paths.
+Using destination-rooted GADAGs would require a new MRT profile 
+to be created with a new MRT algorithm specification, since all routers
+in the MRT Island would need to use destination-rooted GADAGs. </t> 
+
+
+</section>
+
+</section>
+
 <section anchor="Acknowledgements" title="Acknowledgements">
 
   <t>The authors would like to thank Shraddha Hegde, 
@@ -3244,8 +3287,6 @@ target="I-D.ietf-rtgwg-mrt-frr-architecture"/>.</t>
 	&RFC2328;
     &RFC5120;
     &RFC7490;
-    &I-D.ietf-rtgwg-lfa-manageability;
-    <?rfc include="http://xml.resource.org/public/rfc/bibxml3/reference.I-D.draft-ietf-isis-pcr-04.xml"?>
 
     <reference anchor="Kahn_1962_topo_sort"
           target="http://dl.acm.org/citation.cfm?doid=368996.369025">
