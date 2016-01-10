@@ -884,22 +884,22 @@ Finally, based upon that information, alternates are selected for each
 next-hop to each destination.  The different parts of this algorithm
 are described below.  </t>
 
-<t><list style="numbers">
-<t>Order the interaces in the network graph.</t>
-<t>Compute the local MRT Island for the particular MRT Profile. [See <xref target="sec_mrt_island"/>.]</t>
-<t>Select the root to use for the GADAG. [See <xref target="sec_root_selection"/>.]</t>
-<t>Initialize all interfaces to UNDIRECTED. [See <xref target="sec_initialize"/>.]</t>
+<t><list style="symbols">
+<t>Order the interfaces in the network graph. [See <xref target="sec_interface_ordering"/>]</t>
+<t>Compute the local MRT Island for the particular MRT Profile. [See <xref target="sec_mrt_island"/>]</t>
+<t>Select the root to use for the GADAG. [See <xref target="sec_root_selection"/>]</t>
+<t>Initialize all interfaces to UNDIRECTED. [See <xref target="sec_initialize"/>]</t>
 <t>Compute the DFS value,e.g. D(x), and lowpoint value, L(x). [See
-<xref target="low-point_algorithm"/>.]</t>
+<xref target="low-point_algorithm"/>]</t>
 <t>Construct the GADAG. [See <xref target="sec_gadag_lowpoint"/>]</t>
 <t>Assign directions to all interfaces that are still UNDIRECTED. [See
-<xref target="sec_gadag_direct_links"/>.]</t>
+<xref target="sec_gadag_direct_links"/>]</t>
 <t>From the computing router x, compute the next-hops for the MRT-Blue
-and MRT-Red. [See <xref target="sec_compute_mrt_next-hops"/>.]</t>
+and MRT-Red. [See <xref target="sec_compute_mrt_next-hops"/>]</t>
 
 <t>Identify alternates for each next-hop to each destination
 by determining which one of the blue MRT and the red MRT the computing
-router x should select. [See <xref target="sec_mrt_alternates"/>.]</t> 
+router x should select. [See <xref target="sec_mrt_alternates"/>]</t> 
 
 </list></t>
 
@@ -965,7 +965,7 @@ applications is specified in <xref
 target="mrt_node_id_and_metric"/>. The metric and mrt_node_id values
 for OSPFv2, OSPFv3, and IS-IS provided here is normative.  The metric
 and mrt_node_id values for ISIS-PCR in this table should be considered
-informational.  The normative values are defined in
+informational.  The normative values are specified in
  <xref target="IEEE8021Qca"/> . </t>
 
 <figure anchor = "mrt_node_id_and_metric" align="center" title="value of interface.neighbor.mrt_node_id 
@@ -1065,18 +1065,16 @@ MRT_Island_Identification(topology, computing_rtr, profile_id, area)
 
 <section anchor="sec_root_selection" title="GADAG Root Selection">
 
-<t>In Section 8.3 of <xref
-target="I-D.ietf-rtgwg-mrt-frr-architecture"/>, the GADAG Root
-Selection Policy is described for the MRT default profile.  This selection
-policy relies allows routers consistently select
-a common GADAG Root inside the local MRT Island, based on advertised 
-priority values.
-The MRT Lowpoint algorithm simply requires that all routers
-in the MRT Island MUST select the same GADAG Root; the mechanism can
-vary based upon the MRT profile description.  Before beginning
-computation, the network graph is reduced to contain only the set of
-routers that support the specific MRT profile whose MRTs are being
-computed.</t>
+<t>In Section 8.3 of <xref 
+target="I-D.ietf-rtgwg-mrt-frr-architecture"/>, the GADAG Root Selection 
+Policy is described for the MRT default profile. This selection policy 
+allows routers to consistently select a common GADAG Root inside the 
+local MRT Island, based on advertised priority values. The MRT Lowpoint 
+algorithm simply requires that all routers in the MRT Island MUST select 
+the same GADAG Root; the mechanism can vary based upon the MRT profile 
+description. Before beginning computation, the network graph is reduced 
+to contain only the set of routers that support the specific MRT profile 
+whose MRTs are being computed.</t> 
 
 <t> As noted in <xref target="sec_broadcast"/>, pseudonodes MUST 
 NOT be considered for GADAG root selection.</t>
@@ -3107,7 +3105,7 @@ methods for constructing GADAGs were also considered. These alternative
 methods are described in <xref target="sec_gadag_spf"/> and <xref 
 target="sec_gadag_hybrid"/>. In general, these other two methods require 
 more computation to compute the GADAG. The analysis below was performed 
-to determine if the alternative GADAG computation methods produce 
+to determine if the alternative GADAG construction methods produce 
 shorter MRT alternate paths in real network topologies, and if so, to 
 what extent. </t> 
 
@@ -5406,7 +5404,7 @@ y-&gt;x...q-&gt;z but if y &gt;&gt; z, then the path should be
 y&lt;-x...q&lt;-z.  In <xref target="sec_gadag_lowpoint"/>, the same
 problem was handled by finding all ears that started at a node before
 looking at ears starting at nodes higher in the partial order.  In
-this GADAG computation method, using that approach could mean that new ears aren't
+this GADAG construction method, using that approach could mean that new ears aren't
 added in order of their total cost since all ears connected to a node
 would need to be found before additional nodes could be found.</t>
 
@@ -5557,7 +5555,7 @@ Construct_GADAG_via_SPF(topology, root)
 
 <section anchor="sec_gadag_hybrid" title="Constructing a GADAG using a hybrid method" >
 
-<t>In this option, the idea is to combine the salient features of the
+<t>The idea of this method is to combine the salient features of the
 lowpoint inheritance and SPF methods.  To this end, we process nodes
 as they get added to the GADAG just like in the lowpoint inheritance
 by maintaining a stack of nodes. This ensures that we do not need to
@@ -5586,7 +5584,7 @@ computing the next-hops on the GADAG. </t>
 target="hybrid_gadag"/></t>
 
 <figure anchor="hybrid_gadag" align="center"
-title="Hybrid GADAG algorithm">
+title="Hybrid GADAG construction method">
 <artwork align="center"><![CDATA[
 find_spf_stack_ear(stack, x, y, xy_intf, block_root)
    if L(y) == D(y) 
