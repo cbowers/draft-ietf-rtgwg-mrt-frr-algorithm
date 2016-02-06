@@ -3239,7 +3239,7 @@ in the MRT Island would need to use destination-rooted GADAGs. </t>
 <section anchor="Acknowledgements" title="Acknowledgements">
 
   <t>The authors would like to thank Shraddha Hegde, 
-  Eric Wu, Janos Farkas, and Stewart Bryant for their 
+  Eric Wu, Janos Farkas, Stewart Bryant, and Alvaro Retana for their 
   suggestions and review.  We would also like to thank Anil Kumar SN
   for his assistance in clarifying the algorithm description and
   pseudo-code.</t>
