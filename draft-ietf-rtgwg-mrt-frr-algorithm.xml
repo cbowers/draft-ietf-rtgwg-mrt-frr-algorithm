@@ -42,7 +42,7 @@
 <!-- keep one blank line between list items -->
 <!-- end of list of popular I-D processing instructions -->
 
-<rfc category="std" docName="draft-ietf-rtgwg-mrt-frr-algorithm-08" ipr="trust200902">
+<rfc category="std" docName="draft-ietf-rtgwg-mrt-frr-algorithm-09" ipr="trust200902">
   <!-- category values: std, bcp, info, exp, and historic
      ipr values: full3667, noModification3667, noDerivatives3667
      you can add the attributes updates="NNNN" and obsoletes="NNNN" 
@@ -129,7 +129,7 @@
      </address>
     </author>
 
-    <date day="10" month="January" year="2016"/>
+    <date day="16" month="February" year="2016"/>
 
     <area>Routing</area>
 
