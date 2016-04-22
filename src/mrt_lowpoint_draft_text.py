@@ -230,7 +230,7 @@ def Create_Topology_From_File(filename):
         nodea.intf_list.append(nodea_intf)
         nodeb.intf_list.append(nodeb_intf)
     return topo
-
+          
 def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
     if profile_id in computing_rtr.profile_id_list:
         computing_rtr.IN_MRT_ISLAND = True
@@ -240,7 +240,8 @@ def MRT_Island_Identification(topo, computing_rtr, profile_id, area):
     while explore_list != []:
         next_rtr = explore_list.pop()
         for intf in next_rtr.intf_list:
-            if ( (not intf.MRT_INELIGIBLE)
+            if ( (not intf.IN_MRT_ISLAND)
+                 and (not intf.MRT_INELIGIBLE)
                  and (not intf.remote_intf.MRT_INELIGIBLE)
                  and (not intf.IGP_EXCLUDED) and intf.area == area 
                  and (profile_id in intf.remote_node.profile_id_list)):
@@ -1954,6 +1955,6 @@ def Generate_Complex_Topology_and_Run_MRT():
     Write_Output_To_Files(topo, res_file_base)
 
 Generate_Basic_Topology_and_Run_MRT()
-   
+    
 Generate_Complex_Topology_and_Run_MRT()
 
